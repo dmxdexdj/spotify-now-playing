@@ -2,7 +2,7 @@ name: Publish Docker image
 
 on:
   push:
-    branches: [main]
+    branches: [main, v2]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -28,6 +28,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
             type=semver,pattern={{version}}
             type=sha
       - uses: docker/build-push-action@v6

@@ -4,24 +4,31 @@
 <meta charset="utf-8">
 <title>Customize overlay</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314151a'/%3E%3Cg stroke='%231db954' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M7 10h18M7 16h18M7 22h18'/%3E%3C/g%3E%3Cg fill='%23fff'%3E%3Ccircle cx='12' cy='10' r='2.6'/%3E%3Ccircle cx='21' cy='16' r='2.6'/%3E%3Ccircle cx='11' cy='22' r='2.6'/%3E%3C/g%3E%3C/svg%3E">
 <style>
   :root { --bg: #14151a; --panel: #1d1f27; --line: #2c2f3a; --fg: #e8e9ee; --mut: #8b8fa0; --accent: #1db954; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
-  .wrap { display: grid; grid-template-columns: 340px 1fr; min-height: 100vh; }
+  .wrap { display: grid; grid-template-columns: 350px 1fr; min-height: 100vh; }
   @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
   aside { background: var(--panel); border-right: 1px solid var(--line); padding: 20px; overflow-y: auto; max-height: 100vh; }
   @media (max-width: 900px) { aside { max-height: none; } }
   h1 { font-size: 18px; margin: 0 0 16px; }
   h2 { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); margin: 22px 0 10px; }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; }
-  .row label { flex: none; width: 96px; color: var(--fg); }
+  .row label { flex: none; width: 104px; color: var(--fg); }
   .row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .row[hidden] { display: none; }
   output { width: 44px; text-align: right; color: var(--mut); font-variant-numeric: tabular-nums; }
   input[type=color] { width: 44px; height: 28px; border: 1px solid var(--line); border-radius: 6px; background: none; padding: 2px; cursor: pointer; }
-  input[type=text], select { flex: 1; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
+  input[type=text], select { flex: 1; min-width: 0; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
   .check { display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer; }
   .check input { accent-color: var(--accent); }
+  .hint { color: var(--mut); font-size: 12px; margin: 2px 0 8px; }
+  .layouts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .layouts button { padding: 8px 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 8px; cursor: pointer; font: inherit; }
+  .layouts button:hover { border-color: var(--mut); }
+  .layouts button.on { background: var(--accent); border-color: var(--accent); color: #04140a; font-weight: 700; }
   .pos { display: grid; grid-template-columns: repeat(3, 34px); gap: 6px; }
   .pos button { height: 26px; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; cursor: pointer; padding: 0; }
   .pos button:hover { border-color: var(--mut); }
@@ -32,6 +39,8 @@
   #status { margin-top: 10px; min-height: 18px; color: var(--mut); font-size: 13px; }
   #status.ok { color: var(--accent); }
   #status.err { color: #ff6b6b; }
+  .logout { margin-top: 14px; font-size: 12px; }
+  .logout a { color: var(--mut); cursor: pointer; text-decoration: underline; }
   main { padding: 20px; min-width: 0; }
   .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
   .bar span { color: var(--mut); }
@@ -51,6 +60,10 @@
 <aside>
   <h1>Customize overlay</h1>
 
+  <h2>Layout</h2>
+  <div class="layouts" id="layouts"></div>
+  <div class="hint" id="layoutHint"></div>
+
   <h2>Position</h2>
   <div class="pos" id="pos"></div>
   <div class="row"><label>Edge gap</label><input type="range" data-key="margin" min="0" max="300"><output data-for="margin"></output></div>
@@ -65,8 +78,10 @@
   <h2>Colours</h2>
   <div class="row"><label>Background</label><input type="color" data-key="bgColor"></div>
   <div class="row"><label>Opacity</label><input type="range" data-key="bgOpacity" min="0" max="100"><output data-for="bgOpacity"></output></div>
+  <div class="row" id="dimRow"><label>Backdrop dim</label><input type="range" data-key="bgDim" min="0" max="90"><output data-for="bgDim"></output></div>
   <div class="row"><label>Text</label><input type="color" data-key="textColor"></div>
   <div class="row"><label>Accent</label><input type="color" data-key="accent"></div>
+  <label class="check"><input type="checkbox" data-key="chameleon"> Match accent to album art</label>
 
   <h2>Font</h2>
   <div class="row"><label>Font</label>
@@ -84,42 +99,63 @@
   <div class="row"><label>Label text</label><input type="text" data-key="labelText" maxlength="30"></div>
   <label class="check"><input type="checkbox" data-key="shadow"> Drop shadow</label>
   <label class="check"><input type="checkbox" data-key="blur"> Blur behind card</label>
+
+  <h2>Behaviour</h2>
+  <div class="row"><label>When idle</label>
+    <select data-key="idleMode"><option value="demo">Show the demo card</option><option value="hide">Hide the overlay</option></select></div>
+  <div class="hint">"Idle" means Spotify is paused, not linked, or can't be reached.</div>
   <label class="check"><input type="checkbox" data-key="showPaused"> Keep card up while paused</label>
+  <label class="check"><input type="checkbox" data-key="flashOnChange"> Flash the border on a new song</label>
+  <div class="row"><label>Explicit songs</label>
+    <select data-key="explicitMode"><option value="show">Show normally</option><option value="mask">Mask the title</option><option value="hide">Hide the overlay</option></select></div>
 
   <div class="btns">
     <button class="main" id="save">Save</button>
     <button class="ghost" id="reset">Reset</button>
   </div>
   <div id="status"></div>
+  <div class="logout"><a id="logout">Log out</a></div>
 </aside>
 
 <main>
   <div class="bar">
-    <span>Preview background:</span>
+    <span>Background:</span>
     <button data-bg="dark" class="on">Dark</button><button data-bg="light">Light</button><button data-bg="game">Colourful</button>
   </div>
-  <div id="stageWrap" data-bg="dark"><iframe id="pv" src="./?demo=1&preview=1"></iframe></div>
+  <div id="stageWrap" data-bg="dark"><iframe id="pv"></iframe></div>
   <div class="url">
     OBS Browser Source: <code id="obsUrl"></code> &nbsp; Width <b>1920</b>, Height <b>1080</b> (your canvas size).<br>
-    Saved changes show up in OBS within a few seconds, no refresh needed.
+    Saved changes reach OBS instantly, no refresh needed.
   </div>
 </main>
 </div>
 
 <script>
 const $ = s => document.querySelector(s);
-const KEY = new URLSearchParams(location.search).get('key') || '';
-const API = 'api/settings' + (KEY ? '?key=' + encodeURIComponent(KEY) : '');
 const POS = ['top-left','top-center','top-right','center-left','center','center-right','bottom-left','bottom-center','bottom-right'];
+const LAYOUTS = [
+  ['classic', 'Classic card', 'Album art, title, artist and a progress bar.'],
+  ['compact', 'Compact pill', 'A slim rounded pill. Good for busy scenes.'],
+  ['wide', 'Wide bar', 'Spans the whole width. Position only sets top, middle or bottom.'],
+  ['vinyl', 'Spinning vinyl', 'The cover spins like a record while music plays.'],
+  ['fullscreen', 'Full screen', 'Fills the scene with a blurred backdrop. Great for Starting Soon / BRB. Position is ignored.'],
+];
 const DEFAULTS = {
-  position: 'bottom-left', margin: 32, width: 420, scale: 100, bgColor: '#121212', bgOpacity: 82,
-  textColor: '#ffffff', accent: '#1db954', font: 'segoe', titleSize: 20, artistSize: 15, radius: 16,
-  showArt: true, showProgress: true, showLabel: true, labelText: 'Now playing', showPaused: false, shadow: true, blur: true,
+  layout: 'classic', position: 'bottom-left', margin: 32, width: 420, scale: 100,
+  bgColor: '#121212', bgOpacity: 82, textColor: '#ffffff', accent: '#1db954', chameleon: false,
+  font: 'segoe', titleSize: 20, artistSize: 15, radius: 16, bgDim: 55,
+  showArt: true, showProgress: true, showLabel: true, labelText: 'Now playing',
+  showPaused: false, shadow: true, blur: true, idleMode: 'demo', flashOnChange: false, explicitMode: 'show',
 };
 let state = { ...DEFAULTS }, saved = JSON.stringify(state);
 const pv = $('#pv'), wrap = $('#stageWrap'), status = $('#status');
 
-// position buttons
+LAYOUTS.forEach(([id, name]) => {
+  const b = document.createElement('button');
+  b.dataset.layout = id; b.textContent = name;
+  b.onclick = () => { state.layout = id; push(); };
+  $('#layouts').appendChild(b);
+});
 POS.forEach(p => {
   const b = document.createElement('button');
   b.dataset.pos = p; b.title = p.replace('-', ' ');
@@ -128,17 +164,19 @@ POS.forEach(p => {
 });
 
 function render() {
+  document.querySelectorAll('#layouts button').forEach(b => b.classList.toggle('on', b.dataset.layout === state.layout));
+  $('#layoutHint').textContent = (LAYOUTS.find(l => l[0] === state.layout) || [])[2] || '';
+  $('#dimRow').hidden = state.layout !== 'fullscreen';
   document.querySelectorAll('#pos button').forEach(b => b.classList.toggle('on', b.dataset.pos === state.position));
   document.querySelectorAll('[data-key]').forEach(el => {
     const v = state[el.dataset.key];
     if (el.type === 'checkbox') el.checked = !!v; else if (el.value != v) el.value = v;
   });
   document.querySelectorAll('output').forEach(o => {
-    const k = o.dataset.for, unit = k === 'scale' || k === 'bgOpacity' ? '%' : 'px';
+    const k = o.dataset.for, unit = k === 'scale' || k === 'bgOpacity' || k === 'bgDim' ? '%' : 'px';
     o.textContent = state[k] + unit;
   });
-  const dirty = JSON.stringify(state) !== saved;
-  if (dirty) { status.className = ''; status.textContent = 'Unsaved changes'; }
+  if (JSON.stringify(state) !== saved) { status.className = ''; status.textContent = 'Unsaved changes'; }
 }
 function push() { render(); pv.contentWindow && pv.contentWindow.postMessage({ type: 'settings', settings: state }, '*'); }
 
@@ -148,31 +186,32 @@ document.querySelectorAll('[data-key]').forEach(el => {
     push();
   });
 });
-
 addEventListener('message', e => { if (e.data && e.data.type === 'ready') push(); });
 
 // scale the 1920x1080 preview to fit the panel
 function fitPv() { pv.style.transform = `scale(${wrap.clientWidth / 1920})`; }
 new ResizeObserver(fitPv).observe(wrap); fitPv();
 
-document.querySelectorAll('.bar button').forEach(b => b.onclick = () => {
+document.querySelectorAll('.bar button[data-bg]').forEach(b => b.onclick = () => {
   wrap.dataset.bg = b.dataset.bg;
-  document.querySelectorAll('.bar button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.bar button[data-bg]').forEach(x => x.classList.toggle('on', x === b));
 });
 
 $('#save').onclick = async () => {
   status.className = ''; status.textContent = 'Saving...';
   try {
-    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state) });
-    if (!r.ok) throw new Error(r.status === 403 ? 'Wrong or missing admin key' : 'Save failed');
+    const r = await fetch('api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state) });
+    if (!r.ok) throw new Error(r.status === 403 ? 'Session expired. Reload the page and sign in again.' : 'Save failed');
     state = await r.json(); saved = JSON.stringify(state); push();
-    status.className = 'ok'; status.textContent = 'Saved. OBS will update in a few seconds.';
+    status.className = 'ok'; status.textContent = 'Saved. OBS is updating now.';
   } catch (e) { status.className = 'err'; status.textContent = e.message; }
 };
 $('#reset').onclick = () => { state = { ...DEFAULTS }; push(); };
+$('#logout').onclick = async () => { try { await fetch('api/logout', { method: 'POST' }); } catch {} location.reload(); };
 
 $('#obsUrl').textContent = new URL('./', location.href).href;
-fetch('api/settings', { cache: 'no-store' }).then(r => r.json()).then(s => { state = s; saved = JSON.stringify(s); push(); status.textContent = ''; });
+pv.src = './?preview=1';   // your real song, or the demo card automatically when nothing is playing
+fetch('api/settings', { cache: 'no-store' }).then(r => r.json()).then(s => { state = { ...DEFAULTS, ...s }; saved = JSON.stringify(state); push(); status.textContent = ''; });
 </script>
 </body>
 </html>
