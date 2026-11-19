@@ -18,12 +18,12 @@ const {
   REDIRECT_URI,
   ADMIN_KEY = '',
   PORT = 3000,
-  HOST = '0.0.0.0',
+  HOST = '',
   DATA_DIR = __dirname,
 } = process.env;
 
-if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET || !REDIRECT_URI) {
-  console.error('Missing SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET or REDIRECT_URI. Copy .env.example to .env and fill it in.');
+if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
+  console.error('Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET. Copy .env.example to .env and fill it in.');
   process.exit(1);
 }
 
@@ -72,7 +72,41 @@ let accessToken = null;
 let accessExpiresAt = 0;
 try { refreshToken = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8')).refresh_token; } catch {}
 
-const pendingStates = new Set();
+// state -> the redirect URI used for that login (must be identical when exchanging the code)
+const pendingStates = new Map();
+
+// REDIRECT_URI is optional. If unset, it's worked out from how you reached the server, so it
+// works behind Cloudflare Tunnel, reverse proxies, Tailscale, plain LAN, whatever.
+function redirectFor(req) {
+  if (REDIRECT_URI) return REDIRECT_URI;
+  const first = v => String(v || '').split(',')[0].trim();
+  const proto = first(req.headers['x-forwarded-proto']) || (req.socket.encrypted ? 'https' : 'http');
+  const host = first(req.headers['x-forwarded-host']) || req.headers.host || `127.0.0.1:${PORT}`;
+  return `${proto}://${host}/callback`;
+}
+const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// Spotify only accepts https redirects, or http on the loopback IP 127.0.0.1 / [::1]
+function spotifyRejects(redirect) {
+  try {
+    const u = new URL(redirect);
+    return u.protocol === 'http:' && !['127.0.0.1', '[::1]'].includes(u.hostname);
+  } catch { return true; }
+}
+function loginHelp(redirect) {
+  return `<!doctype html><meta charset="utf-8"><title>Spotify login</title>
+<body style="font-family:system-ui;max-width:680px;margin:40px auto;padding:0 16px;line-height:1.5">
+<h2>Spotify won't accept this address for login</h2>
+<p>You opened <code>${esc(redirect.replace(/\/callback$/, ''))}</code>, which would use the redirect URI <code>${esc(redirect)}</code>.
+Spotify only allows plain <code>http</code> for <code>127.0.0.1</code>. The overlay itself works fine on any address; this only affects the one-time login.</p>
+<p>Pick one:</p>
+<ol>
+<li><b>Use 127.0.0.1.</b> From your PC run <code>ssh -L ${PORT}:127.0.0.1:${PORT} user@server</code>, then open <code>http://127.0.0.1:${PORT}/login</code> (add <code>?key=YOUR_ADMIN_KEY</code> if you set one).</li>
+<li><b>Use https.</b> Open /login through an https address (Cloudflare Tunnel, reverse proxy, Tailscale HTTPS). If this page still shows http there, set <code>REDIRECT_URI=https://your-address/callback</code>.</li>
+<li><b>Log in elsewhere.</b> Run the server on your PC, log in at <code>http://127.0.0.1:${PORT}/login</code>, then copy <code>tokens.json</code> into this server's data folder.</li>
+</ol>
+<p>Whichever redirect URI you use must also be added to your app in the Spotify developer dashboard.</p></body>`;
+}
 
 async function tokenRequest(params) {
   const res = await fetch('https://accounts.spotify.com/api/token', {
@@ -156,7 +190,7 @@ const send = (res, code, body, type = 'application/json') => {
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
 };
 
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   if (url.pathname === '/' || url.pathname === '/overlay') {
@@ -187,11 +221,13 @@ http.createServer(async (req, res) => {
 
   if (url.pathname === '/login') {
     if (ADMIN_KEY && url.searchParams.get('key') !== ADMIN_KEY) return send(res, 403, 'Forbidden', 'text/plain');
+    const redirect = redirectFor(req);
+    if (spotifyRejects(redirect)) return send(res, 200, loginHelp(redirect), 'text/html; charset=utf-8');
     const state = crypto.randomBytes(16).toString('hex');
-    pendingStates.add(state);
+    pendingStates.set(state, redirect);
     const auth = new URL('https://accounts.spotify.com/authorize');
     auth.search = new URLSearchParams({
-      response_type: 'code', client_id: SPOTIFY_CLIENT_ID, scope: SCOPE, redirect_uri: REDIRECT_URI, state,
+      response_type: 'code', client_id: SPOTIFY_CLIENT_ID, scope: SCOPE, redirect_uri: redirect, state,
     });
     res.writeHead(302, { Location: auth.toString() });
     return res.end();
@@ -200,9 +236,11 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/callback') {
     const state = url.searchParams.get('state');
     const code = url.searchParams.get('code');
-    if (!code || !pendingStates.delete(state)) return send(res, 400, 'Bad request. Start again at /login', 'text/plain');
+    const redirect = pendingStates.get(state);
+    pendingStates.delete(state);
+    if (!code || !redirect) return send(res, 400, 'Bad request. Start again at /login', 'text/plain');
     try {
-      const data = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI });
+      const data = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: redirect });
       refreshToken = data.refresh_token;
       accessToken = data.access_token;
       accessExpiresAt = Date.now() + data.expires_in * 1000;
@@ -216,8 +254,22 @@ http.createServer(async (req, res) => {
   }
 
   send(res, 404, 'Not found', 'text/plain');
-}).listen(PORT, HOST, () => {
+});
+
+server.on('listening', () => {
+  const a = server.address();
+  console.log(`Listening on ${a.address}:${a.port}`);
   console.log(`Overlay:   http://localhost:${PORT}/`);
   console.log(`Customize: http://localhost:${PORT}/customize${ADMIN_KEY ? '?key=YOUR_ADMIN_KEY' : ''}`);
-  console.log(refreshToken ? 'Spotify: connected' : `Spotify: not connected yet, open ${REDIRECT_URI.replace(/\/callback$/, '')}/login${ADMIN_KEY ? '?key=YOUR_ADMIN_KEY' : ''}`);
+  console.log(refreshToken ? 'Spotify: connected' : `Spotify: not connected yet, open /login${ADMIN_KEY ? '?key=YOUR_ADMIN_KEY' : ''} (see README for the login step)`);
 });
+
+// Listen on IPv6 + IPv4 (dual-stack) by default; fall back to IPv4 only if the host has no IPv6.
+function start(host) {
+  server.once('error', e => {
+    if (!HOST && host === '::' && ['EAFNOSUPPORT', 'EADDRNOTAVAIL', 'EINVAL'].includes(e.code)) return start('0.0.0.0');
+    console.error(e.message); process.exit(1);
+  });
+  server.listen(PORT, host);
+}
+start(HOST || '::');

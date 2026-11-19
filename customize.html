@@ -98,7 +98,7 @@
     <span>Preview background:</span>
     <button data-bg="dark" class="on">Dark</button><button data-bg="light">Light</button><button data-bg="game">Colourful</button>
   </div>
-  <div id="stageWrap" data-bg="dark"><iframe id="pv" src="/?demo=1&preview=1"></iframe></div>
+  <div id="stageWrap" data-bg="dark"><iframe id="pv" src="./?demo=1&preview=1"></iframe></div>
   <div class="url">
     OBS Browser Source: <code id="obsUrl"></code> &nbsp; Width <b>1920</b>, Height <b>1080</b> (your canvas size).<br>
     Saved changes show up in OBS within a few seconds, no refresh needed.
@@ -109,7 +109,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const KEY = new URLSearchParams(location.search).get('key') || '';
-const API = '/api/settings' + (KEY ? '?key=' + encodeURIComponent(KEY) : '');
+const API = 'api/settings' + (KEY ? '?key=' + encodeURIComponent(KEY) : '');
 const POS = ['top-left','top-center','top-right','center-left','center','center-right','bottom-left','bottom-center','bottom-right'];
 const DEFAULTS = {
   position: 'bottom-left', margin: 32, width: 420, scale: 100, bgColor: '#121212', bgOpacity: 82,
@@ -171,8 +171,8 @@ $('#save').onclick = async () => {
 };
 $('#reset').onclick = () => { state = { ...DEFAULTS }; push(); };
 
-$('#obsUrl').textContent = location.origin + '/';
-fetch('/api/settings', { cache: 'no-store' }).then(r => r.json()).then(s => { state = s; saved = JSON.stringify(s); push(); status.textContent = ''; });
+$('#obsUrl').textContent = new URL('./', location.href).href;
+fetch('api/settings', { cache: 'no-store' }).then(r => r.json()).then(s => { state = s; saved = JSON.stringify(s); push(); status.textContent = ''; });
 </script>
 </body>
 </html>

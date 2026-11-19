@@ -1,33 +1,16 @@
-# Spotify Now Playing + Tailscale sidecar (gives it HTTPS and a public/tailnet domain).
-# Put serve.json next to this file (or in APP_DIR). Settings are read from .env / Portainer variables.
+# Spotify Now Playing: a plain container on a normal published port.
+# It works on any network: LAN, Tailscale/Headscale (via the host), reverse proxy, Cloudflare Tunnel, etc.
+# Overlay for OBS:  http://SERVER-ADDRESS:3000/      Settings:  http://SERVER-ADDRESS:3000/customize?key=YOUR_ADMIN_KEY
 services:
-  tailscale:
-    image: tailscale/tailscale:stable
-    container_name: nowplaying-ts
-    hostname: ${TS_HOSTNAME:-nowplaying}
-    environment:
-      TS_AUTHKEY: ${TS_AUTHKEY:?Set TS_AUTHKEY}
-      TS_HOSTNAME: ${TS_HOSTNAME:-nowplaying}
-      TS_STATE_DIR: /var/lib/tailscale
-      TS_USERSPACE: "true"
-      TS_SERVE_CONFIG: /config/serve.json
-    volumes:
-      - ts-state:/var/lib/tailscale
-      - ${APP_DIR:-.}/serve.json:/config/serve.json:ro
-    ports:
-      - "${LAN_PORT:-3000}:3000"   # optional: lets OBS on your LAN use http://SERVER-IP:3000/
-    restart: unless-stopped
-
   app:
-    image: ${IMAGE:?Set IMAGE, e.g. ghcr.io/yourname/spotify-now-playing:latest}
+    image: ${IMAGE:-ghcr.io/dmxdexdj/spotify-now-playing:latest}
     container_name: nowplaying
-    network_mode: service:tailscale
-    depends_on:
-      - tailscale
+    ports:
+      - "${PORT:-3000}:3000"
     environment:
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:?Set SPOTIFY_CLIENT_ID}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:?Set SPOTIFY_CLIENT_SECRET}
-      REDIRECT_URI: ${REDIRECT_URI:?Set REDIRECT_URI}
+      REDIRECT_URI: ${REDIRECT_URI:-}   # optional, worked out automatically when empty
       ADMIN_KEY: ${ADMIN_KEY:?Set ADMIN_KEY}
       DATA_DIR: /data
     volumes:
@@ -35,6 +18,3 @@ services:
     labels:
       - com.centurylinklabs.watchtower.enable=true
     restart: unless-stopped
-
-volumes:
-  ts-state:
