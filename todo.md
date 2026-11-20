@@ -1,37 +1,21 @@
-# 🛠️ `spotify-now-playing` — QoL & Live Venue Roadmap (`dev`)
+# 🛠️ `spotify-now-playing` — v2.2 Polish & UX Roadmap (`dev`)
 
-All core v2.0 features and the batch below are built. Open items are at the end.
+All v2.1 multi-scene, drag-to-place, and live venue features are live on `dev`! Here is the next batch of bug fixes and UX upgrades:
 
-## 📖 Documentation
-- [x] **README positioning** — built for live venues/theatres (ATEM, broadcast keyers, house audio) and live streaming (OBS, vMix), with notes for HDMI/SDI keying and isolated show networks.
+---
 
-## 🎭 Live Venue & Blackmagic Broadcast Features
-- [x] **Luma / Chroma key background** — Transparent, Black (luma), Chroma green, Chroma blue.
-- [x] **Title-safe margin** — 90% safe area option, plus a guide in the preview and snap-to-safe-edge when dragging.
-- [x] **Custom header / label text** — with one-click presets (Pre-show music, Intermission, House audio).
-- [x] **Manual Show/Hide and auto-dismiss** — Show/Hide/Toggle buttons and `POST /api/trigger`, or pop in for N seconds on each new track.
-- [x] **Show-control bridges (`examples/`)** — Companion and QLab (`show-control.md`), VLC and foobar2000 (`local-player-bridge.py`).
+## 🐛 Bug Fixes & Validation
+- [ ] **Reserved Scene Name Errors** — Block and show a clear error message if a user tries to create a scene using a route that already exists (e.g., `customize`, `login`, `logout`, `callback`, `health`, `api`, `fonts`, `assets`, or `static`).
+- [ ] **Fix Spinning Vinyl Shadow Rotation** — Separate the drop shadow onto a non-rotating wrapper element so the vinyl disc and album art spin while the shadow stays fixed in place (realistic lighting).
 
-## 🎨 Overlay & `/customize` QoL
-- [x] **Scenes** — each scene has its own link (`/brb`) and its own settings.
-- [x] **Drag-and-drop preview canvas** — free X/Y placement with snap-to-centre and title-safe guides, arrow-key nudge.
-- [x] **Custom font upload** — `.ttf` / `.otf` / `.woff` / `.woff2`, stored in `data/fonts/`.
-- [x] **Context-aware controls** — settings that don't apply to the chosen layout are hidden.
-- [x] **Build-your-own layout** — art left/right/top/bottom/behind, text alignment, art size.
-- [x] **Smart marquee** for long titles (was already in v2.0).
-- [x] **Copy buttons** — overlay URL, Spotify redirect URI (also on the `/login` help page), and the trigger command.
-- [x] **Live status pills** — Spotify connection, active source, connected displays (also per scene).
-- [x] **Export / import theme presets** and **Reset to defaults**.
-- [x] **Custom CSS box** per scene.
-- [x] **Demo card only in the preview** — the real overlay stays hidden when nothing is playing.
+---
 
-## 🔌 Companion Scripts & Self-Hosting QoL
-- [x] **Windows media (SMTC) script** — `examples/windows-media.py`.
-- [x] **Browser userscript** — `examples/userscript.user.js` (`navigator.mediaSession`).
-- [x] **`/health` endpoint** — used by the Docker healthcheck.
-- [x] **`dev` branch publishes `:dev`**; `latest` stays on `main`.
+## 🎨 Canva-Style "Build Your Own" Designer *(do not use the name "Canva" in the UI or codebase)*
+- [ ] **Freeform Element Canvas** — Upgrade the *Build your own* layout into a Canva-style editor where users can independently drag, resize, layer, and style every element (**Album Art**, **Track Title**, **Artist Name**, **Top Label**, and **Progress Bar**) anywhere on the card or screen.
+- [ ] **Per-Element Controls** — Click any element in the preview to adjust its exact position, width/height, font size, weight, color, alignment, corner radius, and visibility without writing CSS.
 
-## 🔮 Ideas
-- [ ] Album art in the Windows media script (read the SMTC thumbnail and send it as a data URI).
-- [ ] Rename scenes, and drag to reorder them.
-- [ ] Per-scene "hide when this scene isn't the active OBS scene" via OBS WebSocket.
+---
+
+## 🖥️ `/customize` UI & UX Polish
+- [ ] **Collapsible Accordion Sections** — Turn sidebar sections (*Layout*, *Position*, *Colours*, *Broadcast*, *Graphic Control*, etc.) into clean, clickable dropdown/accordion panels so the sidebar stays compact and easy to scan.
+- [ ] **Consistent Dark Theme & Custom Scrollbars** — Style native `<select>` dropdowns, inputs, checkboxes, and custom `::-webkit-scrollbar` / `scrollbar-color` rules so every browser element matches the dashboard's dark UI.
