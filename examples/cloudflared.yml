@@ -1,0 +1,29 @@
+# OPTIONAL: public HTTPS through a Cloudflare Tunnel (no open ports, no certificates to manage).
+# 1. Cloudflare Zero Trust > Networks > Tunnels > create a tunnel, copy its token into TUNNEL_TOKEN.
+# 2. Add a Public Hostname (e.g. nowplaying.yourdomain.com) with service  HTTP  ->  app:3000
+# 3. Add https://nowplaying.yourdomain.com/callback as a Redirect URI in your Spotify app, then open /login there.
+services:
+  app:
+    image: ${IMAGE:-ghcr.io/dmxdexdj/spotify-now-playing:latest}
+    container_name: nowplaying
+    environment:
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:?Set SPOTIFY_CLIENT_ID}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:?Set SPOTIFY_CLIENT_SECRET}
+      REDIRECT_URI: ${REDIRECT_URI:-}
+      ADMIN_KEY: ${ADMIN_KEY:?Set ADMIN_KEY}
+      DATA_DIR: /data
+    volumes:
+      - ${APP_DIR:-.}/data:/data
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: nowplaying-cloudflared
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Set TUNNEL_TOKEN}
+    depends_on:
+      - app
+    restart: unless-stopped

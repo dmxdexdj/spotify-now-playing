@@ -1,0 +1,20 @@
+# Spotify Now Playing: a plain container on a normal published port.
+# It works on any network: LAN, Tailscale/Headscale (via the host), reverse proxy, Cloudflare Tunnel, etc.
+# Overlay for OBS:  http://SERVER-ADDRESS:3000/      Settings:  http://SERVER-ADDRESS:3000/customize?key=YOUR_ADMIN_KEY
+services:
+  app:
+    image: ${IMAGE:-ghcr.io/dmxdexdj/spotify-now-playing:latest}
+    container_name: nowplaying
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:?Set SPOTIFY_CLIENT_ID}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:?Set SPOTIFY_CLIENT_SECRET}
+      REDIRECT_URI: ${REDIRECT_URI:-}   # optional, worked out automatically when empty
+      ADMIN_KEY: ${ADMIN_KEY:?Set ADMIN_KEY}
+      DATA_DIR: /data
+    volumes:
+      - ${APP_DIR:-.}/data:/data
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped

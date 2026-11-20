@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Customize overlay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314151a'/%3E%3Cg stroke='%231db954' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M7 10h18M7 16h18M7 22h18'/%3E%3C/g%3E%3Cg fill='%23fff'%3E%3Ccircle cx='12' cy='10' r='2.6'/%3E%3Ccircle cx='21' cy='16' r='2.6'/%3E%3Ccircle cx='11' cy='22' r='2.6'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+  :root { --bg: #14151a; --panel: #1d1f27; --line: #2c2f3a; --fg: #e8e9ee; --mut: #8b8fa0; --accent: #1db954; --warn: #f0b429; --bad: #ff6b6b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+  .wrap { display: grid; grid-template-columns: 360px 1fr; min-height: 100vh; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+  aside { background: var(--panel); border-right: 1px solid var(--line); padding: 20px; overflow-y: auto; max-height: 100vh; }
+  @media (max-width: 900px) { aside { max-height: none; } }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); margin: 24px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+  h2:first-of-type { border-top: 0; padding-top: 0; margin-top: 16px; }
+  [hidden] { display: none !important; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; }
+  .row label { flex: none; width: 104px; }
+  .row input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
+  output { width: 48px; text-align: right; color: var(--mut); font-variant-numeric: tabular-nums; }
+  input[type=color] { width: 44px; height: 28px; border: 1px solid var(--line); border-radius: 6px; background: none; padding: 2px; cursor: pointer; }
+  input[type=text], select, textarea { flex: 1; min-width: 0; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
+  textarea { width: 100%; min-height: 110px; resize: vertical; font: 12px/1.45 Consolas, "Courier New", monospace; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .check { display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer; }
+  .check input { accent-color: var(--accent); }
+  .hint { color: var(--mut); font-size: 12px; margin: 2px 0 8px; }
+  .hint code, .url code { color: var(--fg); }
+  .layouts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  button { font: inherit; }
+  .layouts button { padding: 8px 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 8px; cursor: pointer; }
+  .layouts button:hover { border-color: var(--mut); }
+  .layouts button.on { background: var(--accent); border-color: var(--accent); color: #04140a; font-weight: 700; }
+  .pos { display: grid; grid-template-columns: repeat(3, 34px); gap: 6px; }
+  .pos button { height: 26px; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; cursor: pointer; padding: 0; }
+  .pos button:hover { border-color: var(--mut); }
+  .pos button.on { background: var(--accent); border-color: var(--accent); }
+  .btns { display: flex; gap: 8px; margin-top: 22px; position: sticky; bottom: -20px; background: var(--panel); padding: 12px 0 20px; }
+  button.main { flex: 1; background: var(--accent); color: #04140a; font-weight: 700; border: 0; border-radius: 8px; padding: 10px; cursor: pointer; font-size: 14px; }
+  button.ghost, button.small { background: none; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+  button.small { padding: 5px 10px; border-radius: 6px; font-size: 13px; }
+  button.ghost:hover, button.small:hover { border-color: var(--mut); }
+  button.danger { color: var(--bad); }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 4px; }
+  .chips button { background: var(--bg); color: var(--mut); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+  .chips button:hover { color: var(--fg); border-color: var(--mut); }
+  #status { margin-top: 2px; min-height: 18px; color: var(--mut); font-size: 13px; }
+  #status.ok { color: var(--accent); } #status.err { color: var(--bad); }
+  .logout { font-size: 12px; } .logout a { color: var(--mut); cursor: pointer; text-decoration: underline; }
+  .fonts { margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
+  .fonts div { display: flex; justify-content: space-between; align-items: center; color: var(--mut); font-size: 13px; }
+  .fonts button { background: none; border: 0; color: var(--bad); cursor: pointer; font-size: 12px; }
+
+  main { padding: 20px; min-width: 0; }
+  .scenebar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .scenebar .tab { display: inline-flex; gap: 8px; align-items: center; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  .scenebar .tab.on { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+  .scenebar .tab i { font-style: normal; font-size: 11px; color: var(--mut); background: var(--bg); border-radius: 999px; padding: 0 7px; }
+  .scenebar form { display: inline-flex; gap: 6px; margin-left: auto; }
+  .scenebar input { width: 150px; flex: none; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 4px 12px; color: var(--mut); font-size: 13px; max-width: 100%; }
+  .pill b { color: var(--fg); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pill a { color: var(--fg); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mut); flex: none; }
+  .dot.ok { background: var(--accent); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
+  .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .bar span { color: var(--mut); }
+  .bar button { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  .bar button.on { border-color: var(--accent); }
+  .bar .check { margin: 0 0 0 auto; color: var(--mut); }
+  #stageWrap { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 10px; border: 1px solid var(--line); }
+  #stageWrap[data-bg=dark] { background: #0b0b0e; }
+  #stageWrap[data-bg=light] { background: #e9ecf2; }
+  #stageWrap[data-bg=game] { background: linear-gradient(135deg, #1b2a49 0%, #5b2a6e 50%, #c2562c 100%); }
+  iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; background: transparent; }
+  #dragLayer { position: absolute; inset: 0; pointer-events: none; }
+  #safeBox { position: absolute; inset: 5%; border: 1px dashed rgba(255,255,255,.45); mix-blend-mode: difference; display: none; }
+  #dragLayer.guides #safeBox, #dragLayer.dragging #safeBox { display: block; }
+  .snap { position: absolute; background: var(--accent); display: none; z-index: 2; }
+  #snapV { top: 0; bottom: 0; width: 1px; } #snapH { left: 0; right: 0; height: 1px; }
+  #handle { position: absolute; display: none; border: 2px dashed var(--accent); border-radius: 6px; cursor: grab; pointer-events: auto; touch-action: none; z-index: 3; }
+  #handle:hover { background: rgba(29,185,84,.12); } #handle.drag { cursor: grabbing; background: rgba(29,185,84,.18); }
+  .url { margin-top: 16px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; color: var(--mut); display: grid; gap: 10px; }
+  .url .line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .url .line > span { flex: none; min-width: 120px; }
+  .url code { user-select: all; word-break: break-all; flex: 1; min-width: 200px; }
+  .url .warn { color: var(--warn); font-size: 12px; }
+  @media (prefers-reduced-motion: no-preference) { .scenebar .tab, .layouts button { transition: border-color .15s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<aside>
+  <h1>Customize overlay</h1>
+  <div class="hint" id="sceneName"></div>
+
+  <h2>Layout</h2>
+  <div class="layouts" id="layouts"></div>
+  <div class="hint" id="layoutHint"></div>
+
+  <div data-vis="custom">
+    <h2>Build your own</h2>
+    <div class="row"><label>Album art</label>
+      <select data-key="artPos"><option value="left">Left of the text</option><option value="right">Right of the text</option><option value="top">Above the text</option><option value="bottom">Below the text</option><option value="background">Behind the text</option></select></div>
+    <div class="row"><label>Text align</label>
+      <select data-key="textAlign"><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option></select></div>
+    <div class="row" data-vis="showart"><label>Art size</label><input type="range" data-key="artSize" min="40" max="400"><output data-for="artSize"></output></div>
+  </div>
+
+  <h2>Position</h2>
+  <div class="row" data-vis="placement"><label>Placement</label>
+    <select data-key="posMode"><option value="grid">Preset spots</option><option value="free">Free (drag in preview)</option></select></div>
+  <div data-vis="grid">
+    <div class="pos" id="pos"></div>
+    <div class="row"><label>Edge gap</label><input type="range" data-key="margin" min="0" max="300"><output data-for="margin"></output></div>
+  </div>
+  <div data-vis="free">
+    <div class="hint">Drag the card in the preview. It snaps to the centre and to the title-safe edges (hold Alt to turn snapping off, arrow keys nudge).</div>
+    <div class="row"><label>Across</label><input type="range" data-key="posX" min="0" max="100" step="0.5"><output data-for="posX"></output></div>
+    <div class="row"><label>Down</label><input type="range" data-key="posY" min="0" max="100" step="0.5"><output data-for="posY"></output></div>
+  </div>
+  <div class="hint" data-vis="nofree" hidden>Wide bar and Full screen are placed automatically, so free placement isn't available for them.</div>
+
+  <h2>Size</h2>
+  <div class="row"><label>Overall scale</label><input type="range" data-key="scale" min="50" max="300"><output data-for="scale"></output></div>
+  <div class="row" data-vis="width"><label>Card width</label><input type="range" data-key="width" min="240" max="800"><output data-for="width"></output></div>
+  <div class="row"><label>Title text</label><input type="range" data-key="titleSize" min="12" max="48"><output data-for="titleSize"></output></div>
+  <div class="row"><label>Artist text</label><input type="range" data-key="artistSize" min="10" max="36"><output data-for="artistSize"></output></div>
+  <div class="row"><label>Corners</label><input type="range" data-key="radius" min="0" max="48"><output data-for="radius"></output></div>
+
+  <h2>Colours</h2>
+  <div data-vis="cardbg">
+    <div class="row"><label>Background</label><input type="color" data-key="bgColor"></div>
+    <div class="row"><label>Opacity</label><input type="range" data-key="bgOpacity" min="0" max="100"><output data-for="bgOpacity"></output></div>
+  </div>
+  <div class="row" data-vis="dim"><label>Backdrop dim</label><input type="range" data-key="bgDim" min="0" max="90"><output data-for="bgDim"></output></div>
+  <div class="row"><label>Text</label><input type="color" data-key="textColor"></div>
+  <div class="row"><label>Accent</label><input type="color" data-key="accent"></div>
+  <label class="check"><input type="checkbox" data-key="chameleon"> Match accent to album art</label>
+
+  <h2>Font</h2>
+  <div class="row"><label>Font</label>
+    <select data-key="font" id="fontSel">
+      <option value="segoe">Segoe UI</option><option value="arial">Arial</option><option value="verdana">Verdana</option>
+      <option value="tahoma">Tahoma</option><option value="trebuchet">Trebuchet MS</option><option value="georgia">Georgia</option>
+      <option value="impact">Impact</option><option value="consolas">Consolas</option><option value="comic">Comic Sans</option>
+      <option value="system">System default</option>
+    </select></div>
+  <div class="fonts" id="fontList"></div>
+  <div class="btnrow"><button class="small" id="fontBtn" type="button">Upload a font</button><input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2" hidden></div>
+  <div class="hint">.ttf, .otf, .woff or .woff2, up to 8 MB. Uploaded fonts are shared by all scenes.</div>
+
+  <h2>Show</h2>
+  <label class="check" data-vis="showart"><input type="checkbox" data-key="showArt"> Album art</label>
+  <label class="check"><input type="checkbox" data-key="showProgress"> Progress bar</label>
+  <label class="check"><input type="checkbox" data-key="showLabel"> Label above the title</label>
+  <div class="row"><label>Label text</label><input type="text" data-key="labelText" maxlength="30"></div>
+  <div class="chips" id="chips"></div>
+  <div data-vis="cardfx">
+    <label class="check"><input type="checkbox" data-key="shadow"> Drop shadow</label>
+    <label class="check"><input type="checkbox" data-key="blur"> Blur behind card</label>
+  </div>
+
+  <h2>Graphic control</h2>
+  <div class="row"><label>Show the card</label>
+    <select data-key="graphicMode"><option value="always">Always, while music plays</option><option value="manual">Only when I press Show</option><option value="autodismiss">On each new track, then hide</option></select></div>
+  <div class="row" data-vis="autosec"><label>Stay up for</label><input type="range" data-key="graphicSeconds" min="2" max="60"><output data-for="graphicSeconds"></output></div>
+  <div data-vis="gbtns">
+    <div class="btnrow"><button class="small" data-trigger="show" type="button">Show</button><button class="small" data-trigger="hide" type="button">Hide</button><button class="small" data-trigger="toggle" type="button">Toggle</button></div>
+    <div class="hint">These buttons control the live overlay on this scene. The preview always shows the card so you can style it. In "new track" mode, Show pops the card in for the same time.</div>
+    <div class="hint">Show-control (Companion, QLab, scripts):</div>
+    <div class="btnrow"><button class="small" id="copyTrigger" type="button">Copy trigger command</button></div>
+  </div>
+
+  <h2>Broadcast</h2>
+  <div class="row"><label>Background</label>
+    <select data-key="bgMode"><option value="transparent">Transparent (OBS, vMix)</option><option value="black">Black (luma key)</option><option value="green">Chroma green</option><option value="blue">Chroma blue</option></select></div>
+  <div class="hint">For hardware keyers without alpha, such as Blackmagic ATEM over HDMI/SDI. Open the overlay URL full screen on the playout machine.</div>
+  <label class="check"><input type="checkbox" data-key="titleSafe"> Keep the card inside the title-safe area (90%)</label>
+
+  <h2>Behaviour</h2>
+  <label class="check"><input type="checkbox" data-key="showPaused"> Keep card up while paused</label>
+  <label class="check"><input type="checkbox" data-key="flashOnChange"> Flash the border on a new song</label>
+  <div class="row"><label>Explicit songs</label>
+    <select data-key="explicitMode"><option value="show">Show normally</option><option value="mask">Mask the title</option><option value="hide">Hide the overlay</option></select></div>
+  <div class="hint">When nothing is playing, the live overlay stays hidden. Only this preview shows a demo card, so you can see your changes.</div>
+
+  <h2>Custom CSS</h2>
+  <textarea data-key="customCss" spellcheck="false" maxlength="6000" placeholder="#card { letter-spacing: .02em; }&#10;#title { text-transform: uppercase; }"></textarea>
+  <div class="hint">Applies to this scene. Useful selectors: <code>#card</code> <code>#title</code> <code>#artist</code> <code>.label</code> <code>#art</code> <code>#bar i</code>.</div>
+
+  <h2>Theme preset</h2>
+  <div class="btnrow">
+    <button class="small" id="exportBtn" type="button">Export</button>
+    <button class="small" id="copyJson" type="button">Copy JSON</button>
+    <button class="small" id="importBtn" type="button">Import</button>
+    <button class="small danger" id="reset" type="button">Reset to defaults</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
+
+  <div class="btns">
+    <button class="main" id="save" type="button">Save</button>
+  </div>
+  <div id="status" role="status"></div>
+  <div class="logout"><a id="logout">Log out</a></div>
+</aside>
+
+<main>
+  <div class="scenebar" id="tabs"></div>
+  <div class="scenebar" style="margin-top:-4px">
+    <button class="small danger" id="delScene" type="button" hidden>Delete this scene</button>
+    <form id="addForm"><input type="text" id="newScene" placeholder="New scene, e.g. brb" maxlength="24" aria-label="New scene name"><button class="small" type="submit">Add scene</button></form>
+  </div>
+  <div class="pills" id="pills" aria-live="polite"></div>
+  <div class="bar">
+    <span>Preview background:</span>
+    <button data-bg="dark" class="on" type="button">Dark</button><button data-bg="light" type="button">Light</button><button data-bg="game" type="button">Colourful</button>
+    <label class="check"><input type="checkbox" id="showGuides"> Title-safe guide</label>
+  </div>
+  <div id="stageWrap" data-bg="dark">
+    <iframe id="pv" title="Overlay preview"></iframe>
+    <div id="dragLayer">
+      <div id="safeBox"></div><div class="snap" id="snapV"></div><div class="snap" id="snapH"></div>
+      <div id="handle" tabindex="0" role="button" aria-label="Card position. Drag, or use the arrow keys." title="Drag to place the card"></div>
+    </div>
+  </div>
+  <div class="url">
+    <div class="line"><span>OBS Browser Source</span><code id="obsUrl"></code><button class="small" data-copy="#obsUrl" type="button">Copy</button></div>
+    <div>Width <b>1920</b>, Height <b>1080</b> (your canvas size). Each scene has its own link. Saved changes reach OBS instantly, no refresh needed.</div>
+    <div class="line"><span>Spotify redirect URI</span><code id="redirectUri">…</code><button class="small" data-copy="#redirectUri" type="button">Copy</button></div>
+    <div class="warn" id="redirectWarn" hidden>Spotify only accepts https addresses (or http://127.0.0.1) for login. See the README, "One-time Spotify login".</div>
+  </div>
+</main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const POS = ['top-left','top-center','top-right','center-left','center','center-right','bottom-left','bottom-center','bottom-right'];
+const LAYOUTS = [
+  ['classic', 'Classic card', 'Album art, title, artist and a progress bar.'],
+  ['compact', 'Compact pill', 'A slim rounded pill. Good for busy scenes.'],
+  ['wide', 'Wide bar', 'Spans the whole width. Position only sets top, middle or bottom.'],
+  ['vinyl', 'Spinning vinyl', 'The cover spins like a record while music plays.'],
+  ['fullscreen', 'Full screen', 'Fills the scene with a blurred backdrop. Great for Starting Soon / BRB. Position is ignored.'],
+  ['custom', 'Build your own', 'Choose where the art sits and how the text lines up.'],
+];
+const DEFAULTS = {
+  layout: 'classic', position: 'bottom-left', posMode: 'grid', posX: 50, posY: 80, titleSafe: false,
+  margin: 32, width: 420, scale: 100, bgMode: 'transparent',
+  bgColor: '#121212', bgOpacity: 82, textColor: '#ffffff', accent: '#1db954', chameleon: false,
+  font: 'segoe', titleSize: 20, artistSize: 15, radius: 16, bgDim: 55,
+  artPos: 'left', textAlign: 'left', artSize: 96,
+  showArt: true, showProgress: true, showLabel: true, labelText: 'Now playing',
+  showPaused: false, shadow: true, blur: true,
+  graphicMode: 'always', graphicSeconds: 8, flashOnChange: false, explicitMode: 'show', customCss: '',
+};
+const ENUMS = {
+  layout: LAYOUTS.map(l => l[0]), position: POS, posMode: ['grid', 'free'], bgMode: ['transparent', 'black', 'green', 'blue'],
+  graphicMode: ['always', 'manual', 'autodismiss'], artPos: ['left', 'right', 'top', 'bottom', 'background'],
+  textAlign: ['left', 'center', 'right'], explicitMode: ['show', 'mask', 'hide'],
+};
+const BUILTIN_FONTS = ['segoe', 'arial', 'verdana', 'tahoma', 'trebuchet', 'georgia', 'impact', 'consolas', 'comic', 'system'];
+const freeOk = s => ['classic', 'compact', 'vinyl', 'custom'].includes(s.layout);
+const isFree = s => freeOk(s) && s.posMode === 'free';
+const bgArt = s => s.layout === 'custom' && s.artPos === 'background';
+const VIS = {
+  custom: s => s.layout === 'custom',
+  showart: s => !bgArt(s),
+  placement: freeOk,
+  nofree: s => !freeOk(s) && s.layout !== 'fullscreen',
+  grid: s => s.layout !== 'fullscreen' && !isFree(s),
+  free: isFree,
+  width: s => !['wide', 'fullscreen'].includes(s.layout),
+  cardbg: s => s.layout !== 'fullscreen' && !bgArt(s),
+  dim: s => s.layout === 'fullscreen' || bgArt(s),
+  cardfx: s => s.layout !== 'fullscreen',
+  autosec: s => s.graphicMode === 'autodismiss',
+  gbtns: s => s.graphicMode !== 'always',
+};
+
+let scene = 'main', scenes = ['main'], state = { ...DEFAULTS }, saved = JSON.stringify(state);
+let lastRect = null, fonts = [], liveStatus = null, drag = null;
+const pv = $('#pv'), wrap = $('#stageWrap'), statusEl = $('#status'), handle = $('#handle'), layer = $('#dragLayer');
+const dirty = () => JSON.stringify(state) !== saved;
+const say = (msg, kind = '') => { statusEl.className = kind; statusEl.textContent = msg; };
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, opts);
+  let d = null; try { d = await r.json(); } catch {}
+  if (!r.ok) throw new Error((d && d.error) || (r.status === 403 ? 'Session expired. Reload the page and sign in again.' : 'Request failed (' + r.status + ')'));
+  return d;
+}
+const jsonOpts = (method, body) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const sq = () => 'scene=' + encodeURIComponent(scene);
+
+// copy that also works on plain-http LAN addresses, where navigator.clipboard is unavailable
+async function copyText(text) {
+  try { if (navigator.clipboard && isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch {}
+  const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+  document.body.appendChild(t); t.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch {}
+  t.remove(); return ok;
+}
+function flashBtn(btn, text) { const old = btn.textContent; btn.textContent = text; setTimeout(() => btn.textContent = old, 1400); }
+
+// ---------- sidebar ----------
+LAYOUTS.forEach(([id, name]) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.dataset.layout = id; b.textContent = name;
+  b.onclick = () => { state.layout = id; push(); };
+  $('#layouts').appendChild(b);
+});
+POS.forEach(p => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.dataset.pos = p; b.title = p.replace('-', ' '); b.setAttribute('aria-label', p.replace('-', ' '));
+  b.onclick = () => { state.position = p; push(); };
+  $('#pos').appendChild(b);
+});
+['Now playing', 'Pre-show music', 'Intermission', 'House audio'].forEach(t => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.textContent = t;
+  b.onclick = () => { state.labelText = t; state.showLabel = true; push(); };
+  $('#chips').appendChild(b);
+});
+$$('.row').forEach((row, i) => { const l = row.querySelector('label'), c = row.querySelector('[data-key]'); if (l && c) { c.id = c.id || 'k_' + c.dataset.key; l.htmlFor = c.id; } });
+
+let fontSig = '';
+function buildFontOptions() {
+  const sig = fonts.map(f => f.file).join('|') + '#' + state.font;
+  if (sig === fontSig) return;
+  fontSig = sig;
+  const sel = $('#fontSel');
+  sel.querySelectorAll('optgroup').forEach(g => g.remove());
+  const names = fonts.map(f => f.family);
+  const cur = state.font;
+  if (cur && cur.startsWith('custom:') && !names.includes(cur.slice(7))) names.push(cur.slice(7));
+  if (names.length) {
+    const g = document.createElement('optgroup'); g.label = 'Uploaded fonts';
+    names.forEach(n => { const o = document.createElement('option'); o.value = 'custom:' + n; o.textContent = fonts.some(f => f.family === n) ? n : n + ' (missing)'; g.appendChild(o); });
+    sel.appendChild(g);
+  }
+  const list = $('#fontList'); list.textContent = '';
+  fonts.forEach(f => {
+    const d = document.createElement('div'), s = document.createElement('span'), b = document.createElement('button');
+    s.textContent = f.family; b.type = 'button'; b.textContent = 'Delete'; b.setAttribute('aria-label', 'Delete font ' + f.family);
+    b.onclick = () => deleteFont(f);
+    d.append(s, b); list.appendChild(d);
+  });
+}
+
+function render() {
+  buildFontOptions();
+  $$('#layouts button').forEach(b => b.classList.toggle('on', b.dataset.layout === state.layout));
+  $('#layoutHint').textContent = (LAYOUTS.find(l => l[0] === state.layout) || [])[2] || '';
+  $$('#pos button').forEach(b => b.classList.toggle('on', b.dataset.pos === state.position));
+  $$('[data-key]').forEach(el => {
+    const v = state[el.dataset.key];
+    if (el.type === 'checkbox') el.checked = !!v; else if (el.value != v) el.value = v;
+  });
+  $$('output').forEach(o => {
+    const k = o.dataset.for, v = state[k];
+    o.textContent = k === 'graphicSeconds' ? v + 's' : ['scale', 'bgOpacity', 'bgDim', 'posX', 'posY'].includes(k) ? v + '%' : v + 'px';
+  });
+  $$('[data-vis]').forEach(el => { el.hidden = !VIS[el.dataset.vis](state); });
+  $('#sceneName').textContent = 'Editing scene: ' + scene;
+  if (dirty()) say('Unsaved changes'); else if (statusEl.textContent === 'Unsaved changes') say('');
+  placeHandle();
+}
+function push() { render(); pv.contentWindow && pv.contentWindow.postMessage({ type: 'settings', settings: state }, '*'); }
+
+$$('[data-key]').forEach(el => {
+  el.addEventListener('input', () => {
+    state[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.type === 'range' ? Number(el.value) : el.value;
+    if (el.dataset.key === 'posX' || el.dataset.key === 'posY') state.posMode = 'free';
+    push();
+  });
+});
+addEventListener('message', e => {
+  if (!e.data || e.source !== pv.contentWindow) return;
+  if (e.data.type === 'ready') push();
+  if (e.data.type === 'rect') { lastRect = e.data.rect; placeHandle(); }
+});
+
+// ---------- preview + drag-to-place ----------
+function fitPv() { pv.style.transform = `scale(${wrap.clientWidth / 1920})`; placeHandle(); }
+new ResizeObserver(fitPv).observe(wrap);
+$$('.bar button[data-bg]').forEach(b => b.onclick = () => {
+  wrap.dataset.bg = b.dataset.bg;
+  $$('.bar button[data-bg]').forEach(x => x.classList.toggle('on', x === b));
+});
+$('#showGuides').onchange = e => layer.classList.toggle('guides', e.target.checked);
+
+function placeHandle() {
+  if (!lastRect || !freeOk(state)) { handle.style.display = 'none'; return; }
+  const k = wrap.clientWidth / lastRect.vw;
+  Object.assign(handle.style, { display: 'block', left: lastRect.x * k + 'px', top: lastRect.y * k + 'px', width: lastRect.w * k + 'px', height: lastRect.h * k + 'px' });
+}
+const round1 = v => Math.round(v * 10) / 10;
+function snapAxis(v, half) {                                  // centre, title-safe edges, screen edges
+  let best = null;
+  for (const [target, guide] of [[50, 50], [5 + half, 5], [95 - half, 95], [half, 0], [100 - half, 100]]) {
+    const d = Math.abs(v - target);
+    if (d < 1.2 && (!best || d < best.d)) best = { d, v: target, guide };
+  }
+  return best;
+}
+function showSnap(sx, sy) {
+  const V = $('#snapV'), H = $('#snapH');
+  V.style.display = sx ? 'block' : 'none'; if (sx) V.style.left = sx.guide + '%';
+  H.style.display = sy ? 'block' : 'none'; if (sy) H.style.top = sy.guide + '%';
+}
+function moveTo(x, y, snapOn) {
+  const r = lastRect, hw = r.w / r.vw * 50, hh = r.h / r.vh * 50;
+  const sx = snapOn ? snapAxis(x, hw) : null, sy = snapOn ? snapAxis(y, hh) : null;
+  if (sx) x = sx.v; if (sy) y = sy.v;
+  state.posMode = 'free'; state.posX = round1(Math.min(100, Math.max(0, x))); state.posY = round1(Math.min(100, Math.max(0, y)));
+  showSnap(sx, sy); push();
+}
+handle.addEventListener('pointerdown', e => {
+  if (!freeOk(state) || !lastRect) return;
+  e.preventDefault(); handle.setPointerCapture(e.pointerId); handle.focus();
+  const r = lastRect;
+  drag = { px: e.clientX, py: e.clientY, cx: (r.x + r.w / 2) / r.vw * 100, cy: (r.y + r.h / 2) / r.vh * 100 };
+  handle.classList.add('drag'); layer.classList.add('dragging');
+  if (state.posMode !== 'free') moveTo(drag.cx, drag.cy, false);   // leave the preset spot without jumping
+});
+handle.addEventListener('pointermove', e => {
+  if (!drag) return;
+  moveTo(drag.cx + (e.clientX - drag.px) / wrap.clientWidth * 100, drag.cy + (e.clientY - drag.py) / wrap.clientHeight * 100, !e.altKey);
+});
+const endDrag = () => { drag = null; handle.classList.remove('drag'); layer.classList.remove('dragging'); showSnap(null, null); };
+handle.addEventListener('pointerup', endDrag); handle.addEventListener('pointercancel', endDrag);
+handle.addEventListener('keydown', e => {
+  const step = e.shiftKey ? 2 : .5, d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+  if (!d || !lastRect) return;
+  e.preventDefault();
+  const r = lastRect, bx = state.posMode === 'free' ? state.posX : (r.x + r.w / 2) / r.vw * 100, by = state.posMode === 'free' ? state.posY : (r.y + r.h / 2) / r.vh * 100;
+  moveTo(bx + d[0], by + d[1], false);
+});
+
+// ---------- scenes ----------
+function renderTabs() {
+  const box = $('#tabs'); box.textContent = '';
+  scenes.forEach(id => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tab' + (id === scene ? ' on' : '');
+    const n = liveStatus && liveStatus.displays[id];
+    b.append(id); if (n) { const i = document.createElement('i'); i.textContent = n + (n === 1 ? ' display' : ' displays'); b.appendChild(i); }
+    b.onclick = () => switchScene(id);
+    box.appendChild(b);
+  });
+  $('#delScene').hidden = scene === 'main';
+  $('#obsUrl').textContent = new URL(scene === 'main' ? './' : encodeURIComponent(scene), location.href).href;
+}
+async function switchScene(id) {
+  if (id === scene) return;
+  if (dirty() && !confirm('Discard the unsaved changes to the "' + scene + '" scene?')) return;
+  await loadScene(id);
+}
+async function loadScene(id) {
+  try {
+    scene = id;
+    const s = await api('api/settings?' + sq(), { cache: 'no-store' });
+    state = { ...DEFAULTS, ...s }; saved = JSON.stringify(state);
+    say(''); renderTabs(); push();
+  } catch (e) { say(e.message, 'err'); }
+}
+$('#addForm').onsubmit = async e => {
+  e.preventDefault();
+  const name = $('#newScene').value.trim(); if (!name) return;
+  if (dirty() && !confirm('The new scene copies the saved settings of "' + scene + '". Discard your unsaved changes?')) return;
+  try {
+    const r = await api('api/scenes', jsonOpts('POST', { id: name, from: scene }));
+    scenes = r.scenes; $('#newScene').value = '';
+    await loadScene(r.id); say('Scene created. Its link is shown below the preview.', 'ok');
+  } catch (err) { say(err.message, 'err'); }
+};
+$('#delScene').onclick = async () => {
+  if (!confirm('Delete the "' + scene + '" scene? Any OBS source using its link will stop updating.')) return;
+  try { const r = await api('api/scenes?id=' + encodeURIComponent(scene), { method: 'DELETE' }); scenes = r.scenes; await loadScene('main'); }
+  catch (err) { say(err.message, 'err'); }
+};
+
+// ---------- status ----------
+async function pollStatus() {
+  try {
+    liveStatus = await api('api/status', { cache: 'no-store' });
+    const s = liveStatus, box = $('#pills'); box.textContent = '';
+    const pill = (dot, html) => { const p = document.createElement('span'); p.className = 'pill'; const d = document.createElement('i'); d.className = 'dot ' + dot; p.appendChild(d); p.appendChild(html); box.appendChild(p); return p; };
+    const el = (tag, text) => { const e = document.createElement(tag); e.textContent = text; return e; };
+    const sp = document.createElement('span');
+    if (!s.spotify) { sp.append('Spotify: '); const a = el('a', 'Not connected, log in'); a.href = 'login'; sp.appendChild(a); }
+    else { sp.append('Spotify: '); sp.appendChild(el('b', s.spotifyError ? 'Connected, errors' : 'Connected')); }
+    pill(!s.spotify ? 'bad' : s.spotifyError ? 'warn' : 'ok', sp);
+    const src = document.createElement('span'); src.append('Source: ');
+    src.appendChild(el('b', s.playing ? (s.source === 'webhook' ? 'Webhook' : 'Spotify') + (s.title ? ': ' + s.title : '') : 'Idle, nothing playing'));
+    pill(s.playing ? 'ok' : '', src);
+    const dp = document.createElement('span'); dp.append('Connected displays: '); dp.appendChild(el('b', String(s.total)));
+    pill(s.total ? 'ok' : '', dp);
+    $('#redirectUri').textContent = s.redirectUri; $('#redirectWarn').hidden = s.redirectOk;
+    renderTabs();
+  } catch {}
+}
+
+// ---------- fonts ----------
+async function loadFonts() { try { fonts = (await api('api/fonts', { cache: 'no-store' })).fonts; buildFontOptions(); render(); } catch {} }
+$('#fontBtn').onclick = () => $('#fontFile').click();
+$('#fontFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  say('Uploading font...');
+  try {
+    const r = await api('api/fonts?name=' + encodeURIComponent(f.name), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: f });
+    await loadFonts();
+    pv.contentWindow.postMessage({ type: 'fonts' }, '*');
+    state.font = 'custom:' + r.family; push(); say('Font added: ' + r.family + '. Save to use it on the live overlay.', 'ok');
+  } catch (err) { say(err.message, 'err'); }
+};
+async function deleteFont(f) {
+  if (!confirm('Delete the font "' + f.family + '"? Scenes using it fall back to the default font.')) return;
+  try {
+    await api('api/fonts?file=' + encodeURIComponent(f.file), { method: 'DELETE' });
+    if (state.font === 'custom:' + f.family) state.font = 'segoe';
+    await loadFonts(); pv.contentWindow.postMessage({ type: 'fonts' }, '*'); push();
+  } catch (err) { say(err.message, 'err'); }
+}
+
+// ---------- graphic control, copy buttons ----------
+$$('[data-trigger]').forEach(b => b.onclick = async () => {
+  try { await api('api/trigger?' + sq(), jsonOpts('POST', { action: b.dataset.trigger })); say('Sent to the live overlay.', 'ok'); }
+  catch (e) { say(e.message, 'err'); }
+});
+$('#copyTrigger').onclick = async e => {
+  const u = new URL('api/trigger?' + sq(), location.href).href;
+  const ok = await copyText(`curl -X POST "${u}" -H "Authorization: Bearer YOUR_ADMIN_KEY" -H "Content-Type: application/json" -d '{"action":"show"}'`);
+  flashBtn(e.target, ok ? 'Copied' : 'Copy failed');
+};
+$$('[data-copy]').forEach(b => b.onclick = async () => flashBtn(b, (await copyText($(b.dataset.copy).textContent)) ? 'Copied' : 'Copy failed'));
+
+// ---------- presets ----------
+function cleanImport(o) {
+  const out = {};
+  if (!o || typeof o !== 'object') return out;
+  for (const [k, def] of Object.entries(DEFAULTS)) {
+    if (!(k in o)) continue;
+    const v = o[k];
+    if (typeof def === 'number') { if (Number.isFinite(Number(v))) out[k] = Number(v); }
+    else if (typeof def === 'boolean') { if (typeof v === 'boolean') out[k] = v; }
+    else if (typeof v === 'string') out[k] = v;
+  }
+  for (const [k, list] of Object.entries(ENUMS)) if (k in out && !list.includes(out[k])) delete out[k];
+  for (const k of ['bgColor', 'textColor', 'accent']) if (k in out && !/^#[0-9a-f]{6}$/i.test(out[k])) delete out[k];
+  if ('font' in out && !BUILTIN_FONTS.includes(out.font) && !/^custom:[\w .-]{1,60}$/.test(out.font)) delete out.font;
+  return out;
+}
+$('#exportBtn').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
+  a.download = 'nowplaying-' + scene + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('#copyJson').onclick = async e => flashBtn(e.target, (await copyText(JSON.stringify(state, null, 2))) ? 'Copied' : 'Copy failed');
+$('#importBtn').onclick = () => $('#importFile').click();
+$('#importFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const picked = cleanImport(JSON.parse(await f.text()));
+    if (!Object.keys(picked).length) throw new Error('No overlay settings found in that file.');
+    state = { ...state, ...picked }; push(); say('Preset imported. Check the preview, then Save.');
+  } catch (err) { say(err instanceof SyntaxError ? 'That file is not valid JSON.' : err.message, 'err'); }
+};
+$('#reset').onclick = () => { if (confirm('Reset every setting on the "' + scene + '" scene to the defaults?')) { state = { ...DEFAULTS }; push(); } };
+
+// ---------- save ----------
+async function save() {
+  say('Saving...');
+  try {
+    state = await api('api/settings?' + sq(), jsonOpts('POST', state));
+    saved = JSON.stringify(state); push(); say('Saved. OBS is updating now.', 'ok');
+  } catch (e) { say(e.message, 'err'); }
+}
+$('#save').onclick = save;
+addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); } });
+addEventListener('beforeunload', e => { if (dirty()) { e.preventDefault(); e.returnValue = ''; } });
+$('#logout').onclick = async () => { try { await fetch('api/logout', { method: 'POST' }); } catch {} location.reload(); };
+
+// ---------- start ----------
+pv.src = './?preview=1';   // your real song, or the demo card automatically when nothing is playing
+(async () => {
+  try { scenes = (await api('api/scenes')).scenes; } catch {}
+  const want = decodeURIComponent((location.hash || '').slice(1));
+  await loadScene(scenes.includes(want) ? want : 'main');
+  fitPv(); loadFonts(); pollStatus(); setInterval(pollStatus, 3000);
+})();
+</script>
+</body>
+</html>
