@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Now Playing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--SCENE-->
+<link rel="stylesheet" id="fontsCss" href="fonts.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231db954'/%3E%3Cpath d='M13 21V9l9-2v12' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='11' cy='21' r='3' fill='%23fff'/%3E%3Ccircle cx='20' cy='19' r='3' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  /* All styling comes from /customize (saved in settings.json). URL options: ?poll=5000 (fallback polling, ms), ?demo=1 */
+  @property --accent { syntax: '<color>'; inherits: true; initial-value: #1db954; }
+  :root {
+    --accent: #1db954; --fg: #fff; --sub: rgba(255,255,255,.7); --bg: rgba(18,18,18,.82);
+    --font: "Segoe UI", system-ui, sans-serif; --w: 420px; --r: 16px; --ts: 20px; --as: 15px;
+    --k: 1; --art: 84px; --dim: .55;
+    --enter: translate(-24px, 0); --shadow: 0 8px 30px rgba(0,0,0,.35); --blur: blur(8px);
+    transition: --accent .8s ease;
+  }
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; font-family: var(--font); }
+
+  /* full-screen layout: blurred album art behind everything */
+  #bgfs { display: none; position: fixed; inset: -6%; z-index: 0; background-size: cover; background-position: center;
+          filter: blur(46px) saturate(1.25); opacity: 0; transition: opacity .8s ease; pointer-events: none; }
+  #bgfs.show { opacity: 1; }
+  body.layout-fullscreen #bgfs { display: block; }
+
+  #stage { position: fixed; inset: 0; z-index: 1; display: flex; box-sizing: border-box; padding: 32px; }
+
+  /* #pos is what gets placed and scaled; #card inside it does the slide-in */
+  #pos { display: flex; flex: none; }
+  #pos.free { position: absolute; }
+  body.layout-wide #pos { width: calc(100% / var(--s, 1)); }
+
+  #card {
+    position: relative; flex: none; display: flex; align-items: center; gap: 16px;
+    width: var(--w); box-sizing: border-box; padding: 14px 18px 14px 14px;
+    border-radius: var(--r); background: var(--bg); color: var(--fg);
+    backdrop-filter: var(--blur); box-shadow: var(--shadow);
+    opacity: 0; transform: var(--enter); filter: var(--tf, none); clip-path: var(--tc, inset(-60px));
+    transition: opacity var(--tdur, .6s) ease, transform var(--tdur, .6s) ease, filter var(--tdur, .6s) ease, clip-path var(--tdur, .6s) ease;
+  }
+  #card.show { opacity: 1; transform: none; filter: none; clip-path: inset(-60px); }
+
+  /* "new song" flash */
+  #card::after { content: ""; position: absolute; inset: -5px; border: 3px solid var(--accent); border-radius: inherit; opacity: 0; pointer-events: none; }
+  #card.flash::after { animation: pulse 3s ease-out 1; }
+  @keyframes pulse { 0% { opacity: 0; transform: scale(.96); } 12% { opacity: 1; transform: none; } 65% { opacity: 1; } 100% { opacity: 0; } }
+
+  #artwrap { position: relative; flex: none; display: flex; }
+  #art { display: block; width: var(--art); height: var(--art); border-radius: calc(var(--r) * .65); object-fit: cover; background: #333; }
+  #hole { display: none; }
+  #info { min-width: 0; flex: 1; }
+  .label { font-size: calc(11px * var(--k)); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 4px; }
+  .line { overflow: hidden; white-space: nowrap; }
+  .line span { display: inline-block; }
+
+  /* Long text glides to the end, pauses, glides back, pauses. No snapping. */
+  .line.scroll { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
+  .line.scroll span { animation: marquee var(--dur, 8s) ease-in-out infinite alternate; }
+  @keyframes marquee { 0%, 20% { transform: translateX(0); } 80%, 100% { transform: translateX(var(--shift)); } }
+
+  #title { font-size: calc(var(--ts) * var(--k)); font-weight: 700; line-height: 1.25; }
+  #artist { font-size: calc(var(--as) * var(--k)); color: var(--sub); margin-top: 2px; line-height: 1.3; }
+  #bar { height: 4px; border-radius: 2px; background: var(--track, rgba(128,128,128,.3)); margin-top: 12px; overflow: hidden; }
+  #bar i { display: block; height: 100%; width: 0; background: var(--fill, var(--accent)); border-radius: inherit; }
+  .noart #artwrap, .nolabel .label, .nobar #bar { display: none; }
+
+  /* ---- layouts ---- */
+  body.layout-compact { --art: 52px; }
+  .layout-compact #card { width: fit-content; max-width: var(--w); min-width: 180px; border-radius: 999px; padding: 8px 26px 8px 8px; gap: 12px; }
+  .layout-compact #art { border-radius: 50%; }
+  .layout-compact .label { display: none; }
+  .layout-compact #bar { margin-top: 6px; height: 3px; }
+
+  body.layout-wide { --art: 88px; --k: 1.15; }
+  .layout-wide #card { flex: 1; width: auto; padding: 16px 28px 16px 16px; gap: 22px; }
+
+  body.layout-vinyl { --art: 104px; }
+  .layout-vinyl #card { padding-left: 22px; gap: 20px; }
+  .layout-vinyl #artwrap { border-radius: 50%; box-shadow: 0 6px 18px 7px rgba(0,0,0,.5); } /* fixed light source: never rotates */
+  .layout-vinyl #art { border-radius: 50%; animation: spin 9s linear infinite;
+    box-shadow: 0 0 0 5px #0e0e0e, 0 0 0 7px #262626; }
+  body.paused.layout-vinyl #art { animation-play-state: paused; }
+  .layout-vinyl #artwrap::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+    background: repeating-radial-gradient(circle, transparent 0 3px, rgba(0,0,0,.14) 3px 4px),
+                conic-gradient(from 25deg, transparent 0 22%, rgba(255,255,255,.14) 27%, transparent 32% 72%, rgba(255,255,255,.1) 77%, transparent 82%); }
+  .layout-vinyl #hole { display: block; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+    border-radius: 50%; background: #101010; box-shadow: 0 0 0 3px #2a2a2a; z-index: 1; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  body.layout-fullscreen { --art: 380px; --k: 2.1; }
+  .layout-fullscreen #card { flex-direction: column; gap: 34px; width: auto; max-width: 92vw; padding: 0;
+    background: transparent; box-shadow: none; backdrop-filter: none; text-align: center; }
+  .layout-fullscreen #art { border-radius: calc(var(--r) * 1.3); box-shadow: 0 22px 70px rgba(0,0,0,.55); }
+  .layout-fullscreen #info { flex: none; width: min(680px, 86vw); }
+  .layout-fullscreen .label { margin-bottom: 10px; }
+  /* build-your-own: freeform canvas. Each element is placed in % of the screen from settings (see applySettings). */
+  #panel { display: none; }
+  .layout-custom #pos { position: absolute; inset: 0; width: auto; }
+  .layout-custom #card { position: absolute; inset: 0; width: auto; padding: 0; gap: 0; display: block; background: none; box-shadow: none; backdrop-filter: none; border-radius: 0; }
+  .layout-custom #card::after { display: none; }
+  .layout-custom #info { display: contents; }
+  .layout-custom #panel { display: block; position: absolute; background: var(--bg); backdrop-filter: var(--blur); box-shadow: var(--shadow); }
+  .layout-custom #panel::after { content: ""; position: absolute; inset: -5px; border: 3px solid var(--accent); border-radius: inherit; opacity: 0; pointer-events: none; }
+  .layout-custom #card.flash #panel::after { animation: pulse 3s ease-out 1; }
+  .layout-custom #artwrap, .layout-custom .label, .layout-custom .line, .layout-custom #bar { position: absolute; margin: 0; box-sizing: border-box; }
+  .layout-custom #art { width: 100%; height: 100%; border-radius: inherit; }
+  .layout-custom #artwrap { overflow: hidden; }
+  .layout-custom .label { overflow: hidden; white-space: nowrap; }
+  .layout-custom .line { display: flex; align-items: center; }
+  .layout-custom .line span { flex: none; max-width: none; }
+  .layout-custom #title, .layout-custom #artist { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; margin: 0; }
+  #art.spin { animation: spin var(--spin, 9s) linear infinite; }
+  body.paused #art.spin { animation-play-state: paused; }
+  .layout-fullscreen #bar { height: 6px; margin-top: 20px; border-radius: 3px; }
+</style>
+<style id="customCss"></style>
+</head>
+<body class="layout-classic">
+<div id="bgfs"></div>
+<div id="stage">
+ <div id="pos">
+  <div id="card">
+    <div id="panel"></div>
+    <div id="artwrap"><img id="art" alt=""><i id="hole"></i></div>
+    <div id="info">
+      <div class="label" id="label">Now playing</div>
+      <div class="line" id="titleLine"><span id="title"></span></div>
+      <div class="line" id="artistLine"><span id="artist"></span></div>
+      <div id="bar"><i id="fill"></i></div>
+    </div>
+  </div>
+ </div>
+</div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const PREVIEW = q.get('preview') === '1';                       // inside /customize: unsaved settings arrive by postMessage
+const SOURCE_DEMO = q.get('demo') === '1' || q.get('source') === 'demo';
+const SCENE = window.__SCENE__ || q.get('scene') || 'main';
+const SQ = 'scene=' + encodeURIComponent(SCENE);
+const POLL_MS = Math.max(2000, Number(q.get('poll')) || 3000);  // only used if the live stream can't connect
+
+const FONTS = {
+  segoe: '"Segoe UI", system-ui, -apple-system, sans-serif', arial: 'Arial, Helvetica, sans-serif',
+  verdana: 'Verdana, Geneva, sans-serif', tahoma: 'Tahoma, Geneva, sans-serif',
+  trebuchet: '"Trebuchet MS", sans-serif', georgia: 'Georgia, serif',
+  impact: 'Impact, "Arial Narrow", sans-serif', consolas: 'Consolas, "Courier New", monospace',
+  comic: '"Comic Sans MS", "Comic Neue", cursive', system: 'system-ui, -apple-system, sans-serif',
+};
+const LAYOUTS = ['classic', 'compact', 'wide', 'vinyl', 'fullscreen', 'custom'];
+const FREE_OK = ['classic', 'compact', 'vinyl'];
+const BG = { transparent: 'transparent', black: '#000000', green: '#00b140', blue: '#0047bb' };
+const fontStack = f => (typeof f === 'string' && f.startsWith('custom:')) ? `"${f.slice(7).replace(/"/g, '')}", system-ui, sans-serif` : (FONTS[f] || FONTS.segoe);
+const ELEMENT_DEFAULTS = {
+  panel:  { x: 2,   y: 82,   w: 24, h: 13,  z: 1, visible: true, radius: 16 },
+  art:    { x: 2.8, y: 84,   w: 5,  h: 8.9, z: 2, visible: true, radius: 10 },
+  label:  { x: 8.6, y: 84,   w: 16, h: 2.2, z: 2, visible: true, fontSize: 11, weight: 700, color: '', align: 'left' },
+  title:  { x: 8.6, y: 86.3, w: 16, h: 3,   z: 2, visible: true, fontSize: 20, weight: 700, color: '', align: 'left' },
+  artist: { x: 8.6, y: 89.5, w: 16, h: 2.4, z: 2, visible: true, fontSize: 15, weight: 400, color: '', align: 'left' },
+  bar:    { x: 8.6, y: 93,   w: 16, h: 0.4, z: 2, visible: true, radius: 4 },
+};
+const EL_NODE = { panel: 'panel', art: 'artwrap', label: 'label', title: 'titleLine', artist: 'artistLine', bar: 'bar' };
+const EL_COLOR = { label: 'var(--accent)', title: 'var(--fg)', artist: 'var(--sub)' };
+const ALIGN = { top: 'flex-start', left: 'flex-start', center: 'center', bottom: 'flex-end', right: 'flex-end' };
+const DEFAULTS = {
+  layout: 'classic', position: 'bottom-left', posMode: 'grid', posX: 50, posY: 80, titleSafe: false,
+  margin: 32, width: 420, scale: 100, bgMode: 'transparent',
+  bgColor: '#121212', bgOpacity: 82, textColor: '#ffffff', accent: '#1db954', chameleon: false,
+  font: 'segoe', titleSize: 20, artistSize: 15, radius: 16, bgDim: 55,
+  artPos: 'left', textAlign: 'left', artSize: 96,
+  showArt: true, showProgress: true, showLabel: true, labelText: 'Now playing',
+  showPaused: false, shadow: true, blur: true,
+  graphicMode: 'always', graphicSeconds: 8, flashOnChange: false, explicitMode: 'show', customCss: '', elements: ELEMENT_DEFAULTS,
+  transition: 'auto', transitionOut: 'same', transitionSpeed: 'normal',
+};
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const svgUri = s => 'data:image/svg+xml;utf8,' + encodeURIComponent(s);
+const DEMO_ART = svgUri('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4d6d"/><stop offset="1" stop-color="#4d79ff"/></linearGradient></defs><rect width="300" height="300" fill="url(#g)"/></svg>');
+const MASK_ART = svgUri('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="#2a2a2e"/></svg>');
+const demoTrack = () => ({ isPlaying: true, title: 'Midnight City Lights (Extended Mix)', artist: 'The Neon Skyline, Another Artist, Third Artist Name', art: DEMO_ART, progressMs: Date.now() % 200000, durationMs: 200000 });
+
+const $ = id => document.getElementById(id);
+const card = $('card'), posEl = $('pos'), bgfs = $('bgfs'), artEl = $('art'), root = document.documentElement;
+let S = { ...DEFAULTS }, lastApplied = '', haveData = false, raw = null, artAccent = null;
+let current = { key: null, progressMs: 0, durationMs: 0, at: 0, playing: false };
+let swapTimer = null, flashTimer = null;
+let graphicOn = false, popUntil = 0, popTimer = null, lastKey = null;
+
+// ---------- colour helpers (Chameleon mode) ----------
+function rgb2hsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  let h = 0, s = 0;
+  if (d) {
+    s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn);
+    h = mx === r ? ((g - b) / d + (g < b ? 6 : 0)) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h /= 6;
+  }
+  return [h, s, l];
+}
+function hsl2hex(h, s, l) {
+  const f = n => { const k = (n + h * 12) % 12, a = s * Math.min(l, 1 - l); return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };
+  return '#' + [f(0), f(8), f(4)].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+function pickColor(img) {
+  try {
+    const n = 24, c = document.createElement('canvas'); c.width = c.height = n;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(img, 0, 0, n, n);
+    const d = x.getImageData(0, 0, n, n).data;
+    const buckets = Array.from({ length: 12 }, () => ({ w: 0, r: 0, g: 0, b: 0 }));
+    let tr = 0, tg = 0, tb = 0, tn = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 200) continue;
+      const [h, s, l] = rgb2hsl(d[i], d[i + 1], d[i + 2]);
+      tr += d[i]; tg += d[i + 1]; tb += d[i + 2]; tn++;
+      if (l < .12 || l > .92 || s < .2) continue;           // skip near-black, near-white and grey
+      const w = s * (1 - Math.abs(2 * l - 1));              // favour vivid, mid-light pixels
+      const b = buckets[Math.min(11, Math.floor(h * 12))];
+      b.w += w; b.r += d[i] * w; b.g += d[i + 1] * w; b.b += d[i + 2] * w;
+    }
+    let best = null;
+    for (const b of buckets) if (b.w > 0 && (!best || b.w > best.w)) best = b;
+    if (best && best.w > .5) {
+      const [h, s, l] = rgb2hsl(best.r / best.w, best.g / best.w, best.b / best.w);
+      return hsl2hex(h, Math.max(s, .55), Math.min(.68, Math.max(.5, l)));
+    }
+    if (!tn) return null;                                    // mostly grey art: keep it neutral, just make it readable
+    const [h, s, l] = rgb2hsl(tr / tn, tg / tn, tb / tn);
+    return hsl2hex(h, s, Math.min(.8, Math.max(.55, l)));
+  } catch { return null; }                                   // tainted canvas etc.: fall back to the accent colour
+}
+function applyAccent() {
+  if (S.chameleon && !artAccent && artEl.complete && artEl.naturalWidth) artAccent = pickColor(artEl);
+  root.style.setProperty('--accent', (S.chameleon && artAccent) || S.accent);
+}
+
+// ---------- settings ----------
+function applySettings(s) {
+  s = { ...DEFAULTS, ...s };
+  const json = JSON.stringify(s);
+  if (json === lastApplied) return;
+  lastApplied = json; S = s;
+  const set = (k, v) => root.style.setProperty(k, v);
+  set('--fg', s.textColor); set('--sub', rgba(s.textColor, .7));
+  set('--bg', rgba(s.bgColor, s.bgOpacity / 100));
+  set('--font', fontStack(s.font));
+  set('--w', s.width + 'px'); set('--r', s.radius + 'px');
+  set('--ts', s.titleSize + 'px'); set('--as', s.artistSize + 'px');
+  set('--dim', s.bgDim / 100);
+  set('--shadow', s.shadow ? '0 8px 30px rgba(0,0,0,.35)' : 'none');
+  set('--blur', s.blur ? 'blur(8px)' : 'none');
+
+  const layout = LAYOUTS.includes(s.layout) ? s.layout : 'classic';
+  LAYOUTS.forEach(l => document.body.classList.toggle('layout-' + l, l === layout));
+  const bg = BG[s.bgMode] || 'transparent';
+  root.style.background = bg; document.body.style.background = bg;
+  $('customCss').textContent = s.customCss || '';
+
+  applyElements(layout === 'custom', s.elements);
+  const free = s.posMode === 'free' && FREE_OK.includes(layout);
+  posEl.classList.toggle('free', free);
+  const [v, h] = s.position === 'center' ? ['center', 'center'] : s.position.split('-');
+  const stage = $('stage');
+  const padX = s.titleSafe ? `max(${s.margin}px, 5vw)` : s.margin + 'px', padY = s.titleSafe ? `max(${s.margin}px, 5vh)` : s.margin + 'px';
+  stage.style.padding = `${padY} ${padX}`;
+  const sc = layout === 'custom' ? 1 : s.scale / 100;
+  set('--s', sc);
+  if (layout === 'custom') {
+    stage.style.padding = '0'; stage.style.alignItems = stage.style.justifyContent = '';
+    posEl.style.left = posEl.style.top = ''; posEl.style.transform = 'none';
+    set('--enter', 'translate(0,24px)');
+  } else if (free) {
+    stage.style.alignItems = ''; stage.style.justifyContent = '';
+    posEl.style.transformOrigin = 'center';
+    posEl.style.transform = `translate(-50%, -50%) scale(${sc})`;
+    set('--enter', 'translate(0,24px)');
+  } else {
+    posEl.style.left = posEl.style.top = '';
+    stage.style.alignItems = layout === 'fullscreen' ? 'center' : ALIGN[v];
+    stage.style.justifyContent = layout === 'fullscreen' ? 'center' : layout === 'wide' ? 'flex-start' : ALIGN[h];
+    const ox = layout === 'fullscreen' || h === 'center' ? 'center' : h, oy = layout === 'fullscreen' || v === 'center' ? 'center' : v;
+    posEl.style.transformOrigin = layout === 'wide' ? `left ${oy}` : `${ox} ${oy}`;
+    posEl.style.transform = `scale(${sc})`;
+    // slide in from the nearest edge
+    set('--enter', layout === 'fullscreen' ? 'translate(0,24px)' : h === 'right' ? 'translate(24px,0)' : h === 'left' ? 'translate(-24px,0)' : v === 'bottom' ? 'translate(0,24px)' : 'translate(0,-24px)');
+  }
+
+  autoEnter = root.style.getPropertyValue('--enter') || autoEnter; setTx('in');
+  document.body.classList.toggle('noart', !s.showArt);
+  document.body.classList.toggle('nobar', !s.showProgress);
+  document.body.classList.toggle('nolabel', !s.showLabel);
+  $('label').textContent = s.labelText;
+
+  applyAccent();
+  placeFree(); reportRect();
+  fit('titleLine', 'title'); fit('artistLine', 'artist');   // sizes changed, re-measure
+  if (haveData) handle(raw);                                 // idle / explicit rules may have changed
+}
+
+// ---------- build-your-own canvas: place every element from settings.elements ----------
+function applyElements(on, els) {
+  root.style.setProperty('--vk', innerHeight / 1080);
+  const CLR = ['left', 'top', 'width', 'height', 'zIndex', 'display', 'fontSize', 'fontWeight', 'color', 'textAlign', 'borderRadius', 'justifyContent', 'opacity', 'border', 'boxShadow', 'letterSpacing', 'lineHeight', 'textTransform', 'fontStyle', 'textDecoration', 'fontFamily', 'webkitTextStroke', 'textShadow', 'filter'];
+  for (const [id, d] of Object.entries(ELEMENT_DEFAULTS)) {
+    const e = $(EL_NODE[id]), st = e.style, c = { ...d, ...((els && els[id]) || {}) }, sp = e.querySelector('span');
+    for (const k of CLR) st.removeProperty(k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()));
+    if (sp) sp.removeAttribute('style');
+    e.style.removeProperty('--fill'); e.style.removeProperty('--track'); e.classList.remove('nomarquee');
+    if (id === 'art') { artEl.classList.remove('spin'); artEl.style.removeProperty('--spin'); artEl.style.removeProperty('border-radius'); }
+    if (!on) continue;
+    st.left = c.x + '%'; st.top = c.y + '%'; st.width = c.w + '%'; st.height = c.h + '%'; st.zIndex = c.z;
+    if (!c.visible) st.display = 'none';
+    if (c.radius !== undefined) st.borderRadius = c.radius * 1 + 'px';
+    if (c.opacity !== undefined && c.opacity < 100) st.opacity = c.opacity / 100;
+    if (c.borderWidth) st.border = `${c.borderWidth}px ${c.borderStyle || 'solid'} ${c.borderColor || 'var(--accent)'}`;
+    const glow = c.shadowColor || '#000000';
+    if (c.shadow) { const b = c.shadowBlur || 20; if (c.fontSize) st.textShadow = `0 2px ${b}px ${glow}`; else st.boxShadow = `0 4px ${b}px ${glow}`; }
+    if (c.fontSize) {
+      st.fontSize = `calc(${c.fontSize}px * var(--vk, 1))`; st.fontWeight = c.bold ? 900 : c.weight; st.textAlign = c.align;
+      st.color = c.chameleon ? 'var(--accent)' : (c.color || EL_COLOR[id]);
+      if (id !== 'label') st.justifyContent = { left: 'flex-start', center: 'center', right: 'flex-end' }[c.align];
+      if (c.letterSpacing) st.letterSpacing = c.letterSpacing / 10 + 'em';
+      if (c.lineHeight) st.lineHeight = c.lineHeight;
+      if (c.uppercase) st.textTransform = 'uppercase';
+      if (c.italic) st.fontStyle = 'italic';
+      if (c.underline) st.textDecoration = 'underline';
+      if (c.font) st.fontFamily = fontStack(c.font);
+      if (c.strokeWidth) st.webkitTextStroke = `${c.strokeWidth}px ${c.strokeColor || '#000000'}`;
+      if (c.pill && sp) { sp.style.background = c.pillColor || 'var(--accent)'; sp.style.padding = `0 ${(c.padX || 12)}px`; sp.style.borderRadius = '999px'; }
+      if (c.marquee === false) e.classList.add('nomarquee');
+    }
+    if (id === 'bar') { if (c.fillColor) e.style.setProperty('--fill', c.fillColor); if (c.trackColor) e.style.setProperty('--track', c.trackColor); }
+    if (id === 'art' && c.spin) { artEl.classList.add('spin'); artEl.style.setProperty('--spin', (c.spinSeconds || 9) + 's'); if (c.radius !== undefined) artEl.style.borderRadius = '50%'; }
+  }
+}
+
+// ---------- free placement + preview hand-off ----------
+function placeFree() {
+  if (!posEl.classList.contains('free')) return;
+  let x = S.posX, y = S.posY;
+  if (S.titleSafe) {                                          // keep the whole card inside the 90% title-safe area
+    const hw = posEl.offsetWidth * (S.scale / 100) / 2 / innerWidth * 100, hh = posEl.offsetHeight * (S.scale / 100) / 2 / innerHeight * 100;
+    x = 95 - hw < 5 + hw ? 50 : Math.min(95 - hw, Math.max(5 + hw, x));
+    y = 95 - hh < 5 + hh ? 50 : Math.min(95 - hh, Math.max(5 + hh, y));
+  }
+  posEl.style.left = x + '%'; posEl.style.top = y + '%';
+}
+function reportRect() {                                       // /customize draws its drag handle from this
+  if (!PREVIEW) return;
+  requestAnimationFrame(() => {
+    const r = posEl.getBoundingClientRect();
+    parent.postMessage({ type: 'rect', rect: { x: r.left, y: r.top, w: r.width, h: r.height, vw: innerWidth, vh: innerHeight } }, '*');
+  });
+}
+new ResizeObserver(() => { placeFree(); reportRect(); }).observe(posEl);
+addEventListener('resize', () => { root.style.setProperty('--vk', innerHeight / 1080); placeFree(); reportRect(); });
+const reloadFonts = () => { $('fontsCss').href = 'fonts.css?v=' + Date.now(); };
+
+// ---------- text ----------
+function fit(lineId, textId) {
+  const line = $(lineId), el = $(textId);
+  line.classList.remove('scroll');
+  line.style.removeProperty('--shift');
+  requestAnimationFrame(() => {
+    const overflow = el.offsetWidth - line.clientWidth;
+    if (overflow > 4 && !line.classList.contains('nomarquee')) {
+      line.style.setProperty('--shift', `-${overflow + 22}px`);
+      line.style.setProperty('--dur', Math.max(6, overflow / 22 + 5) + 's');
+      line.classList.add('scroll');
+    }
+  });
+}
+function setText(lineId, textId, text) { $(textId).textContent = text || ''; fit(lineId, textId); }
+
+// ---------- album art ----------
+function artSrc(u) {
+  try { if (/(^|\.)(scdn\.co|spotifycdn\.com)$/.test(new URL(u).hostname)) return 'api/art?u=' + encodeURIComponent(u); } catch {}
+  return u;
+}
+function setArt(url) {
+  if (!url) { artEl.removeAttribute('src'); bgfs.style.backgroundImage = 'none'; root.style.setProperty('--cardart', 'none'); artAccent = null; applyAccent(); return; }
+  const src = artSrc(url);
+  artEl.crossOrigin = 'anonymous';
+  artEl.onload = () => { artAccent = S.chameleon ? pickColor(artEl) : null; applyAccent(); };
+  artEl.onerror = () => {                                    // no CORS on this image: show it anyway, skip colour matching
+    if (artEl.crossOrigin) { artEl.removeAttribute('crossorigin'); artEl.src = url; artAccent = null; applyAccent(); }
+  };
+  artEl.src = src;
+  const u = `url("${src.replace(/"/g, '%22')}")`;
+  root.style.setProperty('--cardart', u);
+  bgfs.style.backgroundImage = `linear-gradient(rgba(0,0,0,var(--dim)),rgba(0,0,0,var(--dim))), ${u}`;
+}
+
+// ---------- show / hide transition presets ----------
+const TX = {   // hidden-state look of the card for each preset
+  fade: {}, 'slide-up': { enter: 'translate(0,48px)' }, 'slide-down': { enter: 'translate(0,-48px)' },
+  'slide-left': { enter: 'translate(48px,0)' }, 'slide-right': { enter: 'translate(-48px,0)' },
+  pop: { enter: 'scale(.78)' }, blur: { f: 'blur(18px)' }, wipe: { c: 'inset(-60px 100% -60px -60px)' }, cut: { cut: true },
+};
+const TX_SPEED = { fast: .25, normal: .6, slow: 1.1 };
+let autoEnter = 'translate(-24px,0)';
+function setTx(kind) {                                       // kind: 'in' | 'out'
+  const name = kind === 'out' && S.transitionOut !== 'same' ? S.transitionOut : S.transition;
+  const t = TX[name];
+  root.style.setProperty('--enter', t ? (t.enter || 'none') : autoEnter);
+  root.style.setProperty('--tf', t && t.f || 'none');
+  root.style.setProperty('--tc', t && t.c || 'inset(-60px)');
+  root.style.setProperty('--tdur', (t && t.cut ? 0 : TX_SPEED[S.transitionSpeed] || .6) + 's');
+}
+
+// ---------- showing / hiding ----------
+function flash() {
+  card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
+  clearTimeout(flashTimer); flashTimer = setTimeout(() => card.classList.remove('flash'), 3200);
+}
+function hide() {
+  clearTimeout(swapTimer);
+  setTx('out');
+  card.classList.remove('show'); bgfs.classList.remove('show');
+  current.key = null;
+}
+const keyOf = (t, demo, masked) => (demo ? 'D|' : masked ? 'M|' : '') + t.title + '|' + t.artist;
+function render(t, demo, key) {
+  document.body.classList.toggle('paused', !t.isPlaying);
+  if (key !== current.key) {
+    const first = !current.key;
+    if (!first) setTx('out');
+    card.classList.remove('show'); bgfs.classList.remove('show');
+    clearTimeout(swapTimer);
+    swapTimer = setTimeout(() => {                           // fade out, swap, fade back in
+      setText('titleLine', 'title', t.title);
+      setText('artistLine', 'artist', t.artist);
+      setArt(t.art);
+      setTx('in'); void card.offsetWidth;
+      card.classList.add('show'); bgfs.classList.add('show');
+      if (S.flashOnChange && !demo) flash();
+    }, first ? 0 : 450);
+    current.key = key;
+  } else {
+    if (!card.classList.contains('show')) { setTx('in'); void card.offsetWidth; }
+    card.classList.add('show'); bgfs.classList.add('show');
+  }
+  current.progressMs = t.progressMs || 0; current.durationMs = t.durationMs || 0;
+  current.at = performance.now(); current.playing = !!t.isPlaying;
+}
+
+// ---------- graphic control: always / manual (Show-Hide) / pop in for a few seconds on each new track ----------
+function gateOpen() {
+  if (PREVIEW || SOURCE_DEMO) return true;                  // the preview always shows the card so you can style it
+  if (S.graphicMode === 'manual') return graphicOn;
+  if (S.graphicMode === 'autodismiss') return Date.now() < popUntil;
+  return true;
+}
+function armPop() {
+  popUntil = Date.now() + Math.max(2, S.graphicSeconds) * 1000;
+  clearTimeout(popTimer); popTimer = setTimeout(() => { if (haveData) handle(raw); }, Math.max(2, S.graphicSeconds) * 1000 + 60);
+}
+
+// d = what the server says is playing (or null when we couldn't reach it)
+function handle(d) {
+  raw = d; haveData = true;
+  let t = d && d.title && (d.isPlaying || S.showPaused) ? d : null, demo = false;
+  if (SOURCE_DEMO || (!t && PREVIEW)) { t = demoTrack(); demo = true; }   // the demo card only ever appears in the preview or with ?demo=1
+  if (!t) { lastKey = null; return hide(); }
+  let masked = false;
+  if (!demo && t.explicit) {
+    if (S.explicitMode === 'hide') return hide();
+    if (S.explicitMode === 'mask') { t = { ...t, title: 'Explicit track', art: MASK_ART }; masked = true; }
+  }
+  const key = keyOf(t, demo, masked);
+  if (S.graphicMode === 'autodismiss' && !demo && !PREVIEW && key !== lastKey) armPop();
+  lastKey = key;
+  if (!gateOpen()) return hide();
+  render(t, demo, key);
+}
+
+// smooth progress bar between updates
+function tick() {
+  if (current.durationMs) {
+    const p = current.progressMs + (current.playing ? performance.now() - current.at : 0);
+    $('fill').style.width = Math.min(100, (p / current.durationMs) * 100) + '%';
+  } else $('fill').style.width = '0';
+  requestAnimationFrame(tick);
+}
+
+// ---------- data: live stream, with plain polling as a fallback ----------
+let fallbackTimer = null, fallbackFails = 0, lastEvent = Date.now();
+async function pollOnce() {
+  try {
+    const [d, s] = await Promise.all([
+      fetch('api/now-playing', { cache: 'no-store' }).then(r => r.json()),
+      PREVIEW ? null : fetch('api/settings?' + SQ, { cache: 'no-store' }).then(r => r.json()),
+    ]);
+    fallbackFails = 0;
+    if (s) { applySettings(s); const g = await fetch('api/graphic?' + SQ, { cache: 'no-store' }).then(r => r.json()).catch(() => null); if (g) graphicOn = !!g.visible; }
+    handle(d);
+  } catch { if (++fallbackFails >= 3) handle(null); }
+}
+function startFallback() { if (!fallbackTimer) { pollOnce(); fallbackTimer = setInterval(pollOnce, POLL_MS); } }
+function stopFallback() { if (fallbackTimer) { clearInterval(fallbackTimer); fallbackTimer = null; } fallbackFails = 0; }
+
+function connect() {
+  if (SOURCE_DEMO) { handle(null); setInterval(() => handle(null), 3000); return; }
+  if (!window.EventSource) return startFallback();
+  const es = new EventSource('api/stream?' + SQ + (PREVIEW ? '&preview=1' : ''));
+  es.addEventListener('now', e => { lastEvent = Date.now(); stopFallback(); try { handle(JSON.parse(e.data)); } catch {} });
+  es.addEventListener('settings', e => { lastEvent = Date.now(); if (!PREVIEW) try { applySettings(JSON.parse(e.data)); } catch {} });
+  es.addEventListener('fonts', reloadFonts);
+  es.addEventListener('graphic', e => {
+    lastEvent = Date.now();
+    let g; try { g = JSON.parse(e.data); } catch { return; }
+    graphicOn = !!g.visible;
+    if (S.graphicMode === 'autodismiss') {
+      if (g.initial) return;
+      if (g.visible) armPop(); else { popUntil = 0; clearTimeout(popTimer); }
+    }
+    if (haveData) handle(raw);
+  });
+  es.onerror = startFallback;                                // EventSource keeps retrying on its own
+  setInterval(() => { if (Date.now() - lastEvent > 25000) startFallback(); }, 5000); // a proxy that buffers the stream
+}
+
+if (PREVIEW) {
+  // inside /customize: take unsaved settings from the parent page
+  addEventListener('message', e => {
+    if (!e.data) return;
+    if (e.data.type === 'settings') applySettings(e.data.settings);
+    if (e.data.type === 'fonts') reloadFonts();
+    if (e.data.type === 'replay') { hide(); setTimeout(() => handle(raw), 900); }   // preview the show/hide transition
+  });
+  parent.postMessage({ type: 'ready' }, '*');
+}
+applySettings(DEFAULTS);
+connect();
+tick();
+</script>
+</body>
+</html>

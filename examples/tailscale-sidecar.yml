@@ -1,0 +1,44 @@
+# OPTIONAL: gives the app its OWN tailnet name (http://nowplaying:3000/) via a Tailscale/Headscale sidecar.
+# You do not need this if your server is already on the tailnet: the default compose file works at http://SERVER-TAILNET-IP:3000/
+services:
+  tailscale:
+    image: tailscale/tailscale:stable
+    container_name: nowplaying-ts
+    hostname: ${TS_HOSTNAME:-nowplaying}
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:?Set TS_AUTHKEY}
+      TS_HOSTNAME: ${TS_HOSTNAME:-nowplaying}
+      TS_STATE_DIR: /var/lib/tailscale
+      # Headscale: set to --login-server=https://YOUR-HEADSCALE-URL (leave empty for Tailscale)
+      TS_EXTRA_ARGS: ${TS_EXTRA_ARGS:-}
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - ts-state:/var/lib/tailscale
+    ports:
+      - "${LAN_PORT:-3000}:3000"   # also reachable at http://SERVER-LAN-IP:3000/ and used for the one-time Spotify login
+    restart: unless-stopped
+
+  app:
+    image: ${IMAGE:?Set IMAGE, e.g. ghcr.io/yourname/spotify-now-playing:latest}
+    container_name: nowplaying
+    network_mode: service:tailscale
+    depends_on:
+      - tailscale
+    environment:
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:?Set SPOTIFY_CLIENT_ID}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:?Set SPOTIFY_CLIENT_SECRET}
+      REDIRECT_URI: ${REDIRECT_URI:-}
+      ADMIN_KEY: ${ADMIN_KEY:?Set ADMIN_KEY}
+      DATA_DIR: /data
+    volumes:
+      - ${APP_DIR:-.}/data:/data
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+
+volumes:
+  ts-state:

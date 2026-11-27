@@ -1,0 +1,9 @@
+.git
+.github
+.env
+tokens.json
+settings.json
+data
+*.md
+docker-compose.yml
+serve.json

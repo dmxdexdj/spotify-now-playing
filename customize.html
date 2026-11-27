@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Customize overlay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314151a'/%3E%3Cg stroke='%231db954' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M7 10h18M7 16h18M7 22h18'/%3E%3C/g%3E%3Cg fill='%23fff'%3E%3Ccircle cx='12' cy='10' r='2.6'/%3E%3Ccircle cx='21' cy='16' r='2.6'/%3E%3Ccircle cx='11' cy='22' r='2.6'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+  :root { color-scheme: dark; scrollbar-color: #3a3e4c var(--panel); scrollbar-width: thin; --bg: #14151a; --panel: #1d1f27; --line: #2c2f3a; --fg: #e8e9ee; --mut: #8b8fa0; --accent: #1db954; --warn: #f0b429; --bad: #ff6b6b; }
+  * { box-sizing: border-box; scrollbar-color: #3a3e4c transparent; scrollbar-width: thin; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #3a3e4c; border-radius: 999px; border: 2px solid var(--panel); }
+  ::-webkit-scrollbar-thumb:hover { background: #50556a; } ::-webkit-scrollbar-corner { background: transparent; }
+  select { appearance: none; -webkit-appearance: none; padding-right: 28px; cursor: pointer;
+    background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238b8fa0' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center; }
+  option, optgroup { background: var(--panel); color: var(--fg); }
+  input[type=checkbox] { appearance: none; -webkit-appearance: none; flex: none; width: 16px; height: 16px; margin: 0; border: 1px solid #454a5c; border-radius: 4px; background: var(--bg); cursor: pointer; display: inline-grid; place-content: center; }
+  input[type=checkbox]:checked { background: var(--accent); border-color: var(--accent); }
+  input[type=checkbox]:checked::after { content: ""; width: 4px; height: 8px; border: solid #04140a; border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-1px, -1px); }
+  input[type=range] { cursor: pointer; }
+  input[type=color]::-webkit-color-swatch-wrapper { padding: 0; } input[type=color]::-webkit-color-swatch { border: 0; border-radius: 4px; }
+  input[type=text]:hover, select:hover, textarea:hover { border-color: #454a5c; }
+  ::selection { background: rgba(29,185,84,.35); }
+  details.acc { border-top: 1px solid var(--line); } details.acc:first-of-type { border-top: 0; }
+  details.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 13px 0; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); user-select: none; }
+  details.acc > summary::-webkit-details-marker { display: none; }
+  details.acc > summary::after { content: ""; width: 7px; height: 7px; border: solid var(--mut); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .15s; margin-right: 4px; }
+  details.acc[open] > summary::after { transform: rotate(-135deg); }
+  details.acc > summary:hover { color: var(--fg); }
+  details.acc > .accbody { padding-bottom: 14px; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+  .wrap { display: grid; grid-template-columns: 360px 1fr; min-height: 100vh; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+  aside { background: var(--panel); border-right: 1px solid var(--line); padding: 20px; overflow-y: auto; max-height: 100vh; }
+  @media (max-width: 900px) { aside { max-height: none; } }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { display: none; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); margin: 24px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+  h2:first-of-type { border-top: 0; padding-top: 0; margin-top: 16px; }
+  [hidden] { display: none !important; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; }
+  .row label { flex: none; width: 104px; }
+  .row input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
+  output { width: 48px; text-align: right; color: var(--mut); font-variant-numeric: tabular-nums; }
+  input[type=color] { width: 44px; height: 28px; border: 1px solid var(--line); border-radius: 6px; background: none; padding: 2px; cursor: pointer; }
+  input[type=text], select, textarea { flex: 1; min-width: 0; background-color: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit; }
+  textarea { width: 100%; min-height: 110px; resize: vertical; font: 12px/1.45 Consolas, "Courier New", monospace; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .check { display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer; }
+  .check input { accent-color: var(--accent); }
+  .hint { color: var(--mut); font-size: 12px; margin: 2px 0 8px; }
+  .hint code, .url code { color: var(--fg); }
+  .layouts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  button { font: inherit; }
+  .layouts button { padding: 8px 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 8px; cursor: pointer; }
+  .layouts button:hover { border-color: var(--mut); }
+  .layouts button.on { background: var(--accent); border-color: var(--accent); color: #04140a; font-weight: 700; }
+  .pos { display: grid; grid-template-columns: repeat(3, 34px); gap: 6px; }
+  .pos button { height: 26px; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; cursor: pointer; padding: 0; }
+  .pos button:hover { border-color: var(--mut); }
+  .pos button.on { background: var(--accent); border-color: var(--accent); }
+  .btns { display: flex; gap: 8px; margin-top: 22px; position: sticky; bottom: -20px; background: var(--panel); padding: 12px 0 20px; }
+  button.main { flex: 1; background: var(--accent); color: #04140a; font-weight: 700; border: 0; border-radius: 8px; padding: 10px; cursor: pointer; font-size: 14px; }
+  button.ghost, button.small { background: none; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+  button.small { padding: 5px 10px; border-radius: 6px; font-size: 13px; }
+  button.ghost:hover, button.small:hover { border-color: var(--mut); }
+  button.danger { color: var(--bad); }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 4px; }
+  .chips button { background: var(--bg); color: var(--mut); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+  .chips button:hover { color: var(--fg); border-color: var(--mut); }
+  #status { margin-top: 2px; min-height: 18px; color: var(--mut); font-size: 13px; }
+  #status.ok { color: var(--accent); } #status.err { color: var(--bad); }
+  .logout { font-size: 12px; } .logout a { color: var(--mut); cursor: pointer; text-decoration: underline; }
+  .fonts { margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
+  .fonts div { display: flex; justify-content: space-between; align-items: center; color: var(--mut); font-size: 13px; }
+  .fonts button { background: none; border: 0; color: var(--bad); cursor: pointer; font-size: 12px; }
+
+  main { padding: 20px; min-width: 0; }
+  .scenebar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .scenebar .tab { display: inline-flex; gap: 8px; align-items: center; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  .scenebar .tab.on { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+  .scenebar .tab i { font-style: normal; font-size: 11px; color: var(--mut); background: var(--bg); border-radius: 999px; padding: 0 7px; }
+  .scenebar form { display: inline-flex; gap: 6px; margin-left: auto; }
+  .scenebar input { width: 150px; flex: none; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 4px 12px; color: var(--mut); font-size: 13px; max-width: 100%; }
+  .pill b { color: var(--fg); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pill a { color: var(--fg); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mut); flex: none; }
+  .dot.ok { background: var(--accent); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
+  .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .bar span { color: var(--mut); }
+  .bar button { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  .bar button.on { border-color: var(--accent); }
+  .bar .check { margin: 0 0 0 auto; color: var(--mut); }
+  #stageWrap { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 10px; border: 1px solid var(--line); }
+  #stageWrap[data-bg=dark] { background: #0b0b0e; }
+  #stageWrap[data-bg=light] { background: #e9ecf2; }
+  #stageWrap[data-bg=game] { background: linear-gradient(135deg, #1b2a49 0%, #5b2a6e 50%, #c2562c 100%); }
+  iframe { color-scheme: normal; position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; background: transparent; }
+  #dragLayer { position: absolute; inset: 0; pointer-events: none; }
+  #safeBox { position: absolute; inset: 5%; border: 1px dashed rgba(255,255,255,.45); mix-blend-mode: difference; display: none; }
+  #dragLayer.guides #safeBox, #dragLayer.dragging #safeBox { display: block; }
+  .snap { position: absolute; background: var(--accent); display: none; z-index: 2; }
+  #snapV { top: 0; bottom: 0; width: 1px; } #snapH { left: 0; right: 0; height: 1px; }
+  .eh { position: absolute; border: 1px solid rgba(255,255,255,.35); cursor: grab; pointer-events: auto; touch-action: none; z-index: 3; }
+  .eh:hover { border-color: var(--accent); background: rgba(29,185,84,.1); }
+  .eh.sel { border: 2px solid var(--accent); background: rgba(29,185,84,.12); }
+  .eh.drag { cursor: grabbing; } .eh.off { display: none; }
+  .eh.lk { border-style: dashed; cursor: not-allowed; }
+  .eh i { display: none; position: absolute; width: 11px; height: 11px; background: #fff; border: 2px solid var(--accent); border-radius: 3px; }
+  .eh.sel.one:not(.lk) i { display: block; } .eh i[data-c=nw] { left: -7px; top: -7px; cursor: nwse-resize; } .eh i[data-c=ne] { right: -7px; top: -7px; cursor: nesw-resize; }
+  .eh i[data-c=sw] { left: -7px; bottom: -7px; cursor: nesw-resize; } .eh i[data-c=se] { right: -7px; bottom: -7px; cursor: nwse-resize; }
+  .eh i[data-c=n] { left: 50%; top: -7px; margin-left: -5px; cursor: ns-resize; } .eh i[data-c=s] { left: 50%; bottom: -7px; margin-left: -5px; cursor: ns-resize; }
+  .eh i[data-c=e] { right: -7px; top: 50%; margin-top: -5px; cursor: ew-resize; } .eh i[data-c=w] { left: -7px; top: 50%; margin-top: -5px; cursor: ew-resize; }
+  #hit { position: absolute; inset: 0; pointer-events: auto; display: none; z-index: 1; cursor: crosshair; touch-action: none; }
+  #marq { position: absolute; display: none; z-index: 20; border: 1px solid var(--accent); background: rgba(29,185,84,.14); pointer-events: none; }
+  #fbar { position: absolute; z-index: 12; pointer-events: auto; max-width: calc(100% - 8px); display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 6px 8px; background: rgba(29,31,39,.96); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.5); font-size: 12px; }
+  #dragLayer.dragging #fbar { opacity: .15; pointer-events: none; }
+  #fbar .g { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-right: 10px; border-right: 1px solid var(--line); } #fbar .g:last-child { border-right: 0; padding-right: 0; }
+  #fbar label.f { display: inline-flex; align-items: center; gap: 4px; color: var(--mut); } #fbar label.f span { font-size: 11px; }
+  #fbar input[type=number] { width: 54px; flex: none; padding: 3px 4px; } #fbar select { flex: none; width: auto; max-width: 120px; padding: 3px 24px 3px 6px; }
+  #fbar input[type=color] { width: 30px; height: 22px; padding: 1px; }
+  #fbar button { background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px; cursor: pointer; font-size: 12px; min-width: 24px; }
+  #fbar button:hover { border-color: var(--mut); } #fbar button.on { background: var(--accent); border-color: var(--accent); color: #04140a; }
+  #fbar .seg { display: inline-flex; gap: 2px; } #fbar button.danger { color: var(--bad); }
+  .bar button:disabled { opacity: .4; cursor: default; }
+  .elchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+  .elchips button { background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 13px; }
+  .elchips button.on { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); } .elchips button.off { opacity: .5; }
+  #elCtl .row label { width: 84px; } #elCtl .sub { display: flex; gap: 8px; margin: 10px 0 4px; flex-wrap: wrap; }
+  #handle { position: absolute; display: none; border: 2px dashed var(--accent); border-radius: 6px; cursor: grab; pointer-events: auto; touch-action: none; z-index: 3; }
+  #handle:hover { background: rgba(29,185,84,.12); } #handle.drag { cursor: grabbing; background: rgba(29,185,84,.18); }
+  .url { margin-top: 16px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; color: var(--mut); display: grid; gap: 10px; }
+  .url .line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .url .line > span { flex: none; min-width: 120px; }
+  .url code { user-select: all; word-break: break-all; flex: 1; min-width: 200px; }
+  .url .warn { color: var(--warn); font-size: 12px; }
+  select { padding-right: 28px; }
+  @media (prefers-reduced-motion: no-preference) { .scenebar .tab, .layouts button { transition: border-color .15s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<aside>
+  <h1>Customize overlay</h1>
+  <div class="hint" id="sceneName"></div>
+
+  <h2>Layout</h2>
+  <div class="layouts" id="layouts"></div>
+  <div class="hint" id="layoutHint"></div>
+
+  <div data-vis="custom">
+    <h2>Elements</h2>
+    <div class="hint">Click an element to select it (Shift+click adds), or drag on empty stage to box-select. Drag to move, drag a handle to resize. Arrows nudge 1px (Shift = 10px), Ctrl+A selects all, Delete hides, Ctrl+Z / Ctrl+Y undo and redo. Alt while dragging turns snapping off.</div>
+    <div class="elchips" id="elChips"></div>
+    <div id="elCtl"></div>
+  </div>
+
+  <h2>Position</h2>
+  <div class="row" data-vis="placement"><label>Placement</label>
+    <select data-key="posMode"><option value="grid">Preset spots</option><option value="free">Free (drag in preview)</option></select></div>
+  <div data-vis="grid">
+    <div class="pos" id="pos"></div>
+    <div class="row"><label>Edge gap</label><input type="range" data-key="margin" min="0" max="300"><output data-for="margin"></output></div>
+  </div>
+  <div data-vis="free">
+    <div class="hint">Drag the card in the preview. It snaps to the centre and to the title-safe edges (hold Alt to turn snapping off, arrow keys nudge).</div>
+    <div class="row"><label>Across</label><input type="range" data-key="posX" min="0" max="100" step="0.5"><output data-for="posX"></output></div>
+    <div class="row"><label>Down</label><input type="range" data-key="posY" min="0" max="100" step="0.5"><output data-for="posY"></output></div>
+  </div>
+  <div class="hint" data-vis="nofree" hidden>Wide bar and Full screen are placed automatically, so free placement isn't available for them.</div>
+
+  <h2>Size</h2>
+  <div class="row" data-vis="nocustom"><label>Overall scale</label><input type="range" data-key="scale" min="50" max="300"><output data-for="scale"></output></div>
+  <div class="row" data-vis="width"><label>Card width</label><input type="range" data-key="width" min="240" max="800"><output data-for="width"></output></div>
+  <div class="row" data-vis="nocustom"><label>Title text</label><input type="range" data-key="titleSize" min="12" max="48"><output data-for="titleSize"></output></div>
+  <div class="row" data-vis="nocustom"><label>Artist text</label><input type="range" data-key="artistSize" min="10" max="36"><output data-for="artistSize"></output></div>
+  <div class="row" data-vis="nocustom"><label>Corners</label><input type="range" data-key="radius" min="0" max="48"><output data-for="radius"></output></div>
+
+  <h2>Colours</h2>
+  <div data-vis="cardbg">
+    <div class="row"><label>Background</label><input type="color" data-key="bgColor"></div>
+    <div class="row"><label>Opacity</label><input type="range" data-key="bgOpacity" min="0" max="100"><output data-for="bgOpacity"></output></div>
+  </div>
+  <div class="row" data-vis="dim"><label>Backdrop dim</label><input type="range" data-key="bgDim" min="0" max="90"><output data-for="bgDim"></output></div>
+  <div class="row"><label>Text</label><input type="color" data-key="textColor"></div>
+  <div class="row"><label>Accent</label><input type="color" data-key="accent"></div>
+  <label class="check"><input type="checkbox" data-key="chameleon"> Match accent to album art</label>
+
+  <h2>Font</h2>
+  <div class="row"><label>Font</label>
+    <select data-key="font" id="fontSel">
+      <option value="segoe">Segoe UI</option><option value="arial">Arial</option><option value="verdana">Verdana</option>
+      <option value="tahoma">Tahoma</option><option value="trebuchet">Trebuchet MS</option><option value="georgia">Georgia</option>
+      <option value="impact">Impact</option><option value="consolas">Consolas</option><option value="comic">Comic Sans</option>
+      <option value="system">System default</option>
+    </select></div>
+  <div class="fonts" id="fontList"></div>
+  <div class="btnrow"><button class="small" id="fontBtn" type="button">Upload a font</button><input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2" hidden></div>
+  <div class="hint">.ttf, .otf, .woff or .woff2, up to 8 MB. Uploaded fonts are shared by all scenes.</div>
+
+  <h2>Show</h2>
+  <div data-vis="nocustom">
+    <label class="check"><input type="checkbox" data-key="showArt"> Album art</label>
+    <label class="check"><input type="checkbox" data-key="showProgress"> Progress bar</label>
+    <label class="check"><input type="checkbox" data-key="showLabel"> Label above the title</label>
+  </div>
+  <div class="row"><label>Label text</label><input type="text" data-key="labelText" maxlength="30"></div>
+  <div class="chips" id="chips"></div>
+  <div data-vis="cardfx">
+    <label class="check"><input type="checkbox" data-key="shadow"> Drop shadow</label>
+    <label class="check"><input type="checkbox" data-key="blur"> Blur behind card</label>
+  </div>
+
+  <h2>Graphic control</h2>
+  <div class="row"><label>Show the card</label>
+    <select data-key="graphicMode"><option value="always">Always, while music plays</option><option value="manual">Only when I press Show</option><option value="autodismiss">On each new track, then hide</option></select></div>
+  <div class="row"><label>Transition</label>
+    <select data-key="transition"><option value="auto">Auto (slide from edge)</option><option value="fade">Fade</option><option value="slide-up">Slide up</option><option value="slide-down">Slide down</option><option value="slide-left">Slide left</option><option value="slide-right">Slide right</option><option value="pop">Pop / scale</option><option value="blur">Blur dissolve</option><option value="wipe">Wipe</option><option value="cut">Instant cut</option></select></div>
+  <div class="row"><label>Exit</label>
+    <select data-key="transitionOut"><option value="same">Same as entrance</option><option value="fade">Fade</option><option value="slide-up">Slide up</option><option value="slide-down">Slide down</option><option value="slide-left">Slide left</option><option value="slide-right">Slide right</option><option value="pop">Pop / scale</option><option value="blur">Blur dissolve</option><option value="wipe">Wipe</option><option value="cut">Instant cut</option></select></div>
+  <div class="row"><label>Speed</label><select data-key="transitionSpeed"><option value="fast">Fast (0.25s)</option><option value="normal">Normal (0.6s)</option><option value="slow">Slow (1.1s)</option></select></div>
+  <div class="btnrow"><button class="small" id="replayTx" type="button">Preview transition</button></div>
+  <div class="row" data-vis="autosec"><label>Stay up for</label><input type="range" data-key="graphicSeconds" min="2" max="60"><output data-for="graphicSeconds"></output></div>
+  <div data-vis="gbtns">
+    <div class="btnrow"><button class="small" data-trigger="show" type="button">Show</button><button class="small" data-trigger="hide" type="button">Hide</button><button class="small" data-trigger="toggle" type="button">Toggle</button></div>
+    <div class="hint">These buttons control the live overlay on this scene. The preview always shows the card so you can style it. In "new track" mode, Show pops the card in for the same time.</div>
+    <div class="hint">Show-control (Companion, QLab, scripts):</div>
+    <div class="btnrow"><button class="small" id="copyTrigger" type="button">Copy trigger command</button></div>
+  </div>
+
+  <h2>Broadcast</h2>
+  <div class="row"><label>Background</label>
+    <select data-key="bgMode"><option value="transparent">Transparent (OBS, vMix)</option><option value="black">Black (luma key)</option><option value="green">Chroma green</option><option value="blue">Chroma blue</option></select></div>
+  <div class="hint">For hardware keyers without alpha, such as Blackmagic ATEM over HDMI/SDI. Open the overlay URL full screen on the playout machine.</div>
+  <label class="check"><input type="checkbox" data-key="titleSafe"> Keep the card inside the title-safe area (90%)</label>
+
+  <h2>Behaviour</h2>
+  <label class="check"><input type="checkbox" data-key="showPaused"> Keep card up while paused</label>
+  <label class="check"><input type="checkbox" data-key="flashOnChange"> Flash the border on a new song</label>
+  <div class="row"><label>Explicit songs</label>
+    <select data-key="explicitMode"><option value="show">Show normally</option><option value="mask">Mask the title</option><option value="hide">Hide the overlay</option></select></div>
+  <div class="hint">When nothing is playing, the live overlay stays hidden. Only this preview shows a demo card, so you can see your changes.</div>
+
+  <h2>Custom CSS</h2>
+  <textarea data-key="customCss" spellcheck="false" maxlength="6000" placeholder="#card { letter-spacing: .02em; }&#10;#title { text-transform: uppercase; }"></textarea>
+  <div class="hint">Applies to this scene. Useful selectors: <code>#card</code> <code>#title</code> <code>#artist</code> <code>.label</code> <code>#art</code> <code>#bar i</code>.</div>
+
+  <h2>Theme preset</h2>
+  <div class="btnrow">
+    <button class="small" id="exportBtn" type="button">Export</button>
+    <button class="small" id="copyJson" type="button">Copy JSON</button>
+    <button class="small" id="importBtn" type="button">Import</button>
+    <button class="small danger" id="reset" type="button">Reset to defaults</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
+
+  <div class="btns">
+    <button class="main" id="save" type="button">Save</button>
+  </div>
+  <div id="status" role="status"></div>
+  <div class="logout"><a id="logout">Log out</a></div>
+</aside>
+
+<main>
+  <div class="scenebar" id="tabs"></div>
+  <div class="scenebar" style="margin-top:-4px">
+    <button class="small danger" id="delScene" type="button" hidden>Delete this scene</button>
+    <form id="addForm"><input type="text" id="newScene" placeholder="New scene, e.g. brb" maxlength="24" aria-label="New scene name"><button class="small" type="submit">Add scene</button></form>
+  </div>
+  <div class="pills" id="pills" aria-live="polite"></div>
+  <div class="bar">
+    <button id="undoBtn" type="button" title="Undo (Ctrl+Z)" disabled>&#8630; Undo</button><button id="redoBtn" type="button" title="Redo (Ctrl+Y)" disabled>&#8631; Redo</button>
+    <span style="margin-left:10px">Preview background:</span>
+    <button data-bg="dark" class="on" type="button">Dark</button><button data-bg="light" type="button">Light</button><button data-bg="game" type="button">Colourful</button>
+    <label class="check"><input type="checkbox" id="showGuides"> Title-safe guide</label>
+  </div>
+  <div id="stageWrap" data-bg="dark">
+    <iframe id="pv" title="Overlay preview"></iframe>
+    <div id="dragLayer">
+      <div id="safeBox"></div><div class="snap" id="snapV"></div><div class="snap" id="snapH"></div>
+      <div id="hit"></div><div id="marq"></div>
+      <div id="elHandles"></div>
+      <div id="fbar" hidden></div>
+      <div id="handle" tabindex="0" role="button" aria-label="Card position. Drag, or use the arrow keys." title="Drag to place the card"></div>
+    </div>
+  </div>
+  <div class="url">
+    <div class="line"><span>OBS Browser Source</span><code id="obsUrl"></code><button class="small" data-copy="#obsUrl" type="button">Copy</button></div>
+    <div>Width <b>1920</b>, Height <b>1080</b> (your canvas size). Each scene has its own link. Saved changes reach OBS instantly, no refresh needed.</div>
+    <div class="line"><span>Spotify redirect URI</span><code id="redirectUri">…</code><button class="small" data-copy="#redirectUri" type="button">Copy</button></div>
+    <div class="warn" id="redirectWarn" hidden>Spotify only accepts https addresses (or http://127.0.0.1) for login. See the README, "One-time Spotify login".</div>
+  </div>
+</main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const POS = ['top-left','top-center','top-right','center-left','center','center-right','bottom-left','bottom-center','bottom-right'];
+const LAYOUTS = [
+  ['classic', 'Classic card', 'Album art, title, artist and a progress bar.'],
+  ['compact', 'Compact pill', 'A slim rounded pill. Good for busy scenes.'],
+  ['wide', 'Wide bar', 'Spans the whole width. Position only sets top, middle or bottom.'],
+  ['vinyl', 'Spinning vinyl', 'The cover spins like a record while music plays.'],
+  ['fullscreen', 'Full screen', 'Fills the scene with a blurred backdrop. Great for Starting Soon / BRB. Position is ignored.'],
+  ['custom', 'Build your own', 'A freeform canvas: drag, resize, layer and style every element yourself.'],
+];
+const DEFAULTS = {
+  layout: 'classic', position: 'bottom-left', posMode: 'grid', posX: 50, posY: 80, titleSafe: false,
+  margin: 32, width: 420, scale: 100, bgMode: 'transparent',
+  bgColor: '#121212', bgOpacity: 82, textColor: '#ffffff', accent: '#1db954', chameleon: false,
+  font: 'segoe', titleSize: 20, artistSize: 15, radius: 16, bgDim: 55,
+  artPos: 'left', textAlign: 'left', artSize: 96,
+  showArt: true, showProgress: true, showLabel: true, labelText: 'Now playing',
+  showPaused: false, shadow: true, blur: true,
+  graphicMode: 'always', graphicSeconds: 8, flashOnChange: false, explicitMode: 'show', customCss: '', elements: null,
+  transition: 'auto', transitionOut: 'same', transitionSpeed: 'normal',
+};
+const EL_NAMES = { art: 'Album art', title: 'Track title', artist: 'Artist name', label: 'Top label', bar: 'Progress bar', panel: 'Card background' };
+const EL_IDS = Object.keys(EL_NAMES);
+// x/y/w/h are % of the screen, fontSize is px on a 1080p canvas (same table as the server)
+const ELEMENT_DEFAULTS = {
+  panel:  { x: 2,   y: 82,   w: 24, h: 13,  z: 1, visible: true, radius: 16 },
+  art:    { x: 2.8, y: 84,   w: 5,  h: 8.9, z: 2, visible: true, radius: 10 },
+  label:  { x: 8.6, y: 84,   w: 16, h: 2.2, z: 2, visible: true, fontSize: 11, weight: 700, color: '', align: 'left' },
+  title:  { x: 8.6, y: 86.3, w: 16, h: 3,   z: 2, visible: true, fontSize: 20, weight: 700, color: '', align: 'left' },
+  artist: { x: 8.6, y: 89.5, w: 16, h: 2.4, z: 2, visible: true, fontSize: 15, weight: 400, color: '', align: 'left' },
+  bar:    { x: 8.6, y: 93,   w: 16, h: 0.4, z: 2, visible: true, radius: 4 },
+};
+const mergeEls = o => Object.fromEntries(EL_IDS.map(id => [id, { ...ELEMENT_DEFAULTS[id], ...((o && o[id]) || {}) }]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const RESERVED = ['api', 'scene', 'fonts', 'login', 'logout', 'callback', 'customize', 'overlay', 'health', 'favicon', 'fonts.css', 'assets', 'static'];
+DEFAULTS.elements = mergeEls();
+const ENUMS = {
+  layout: LAYOUTS.map(l => l[0]), position: POS, posMode: ['grid', 'free'], bgMode: ['transparent', 'black', 'green', 'blue'],
+  graphicMode: ['always', 'manual', 'autodismiss'], artPos: ['left', 'right', 'top', 'bottom', 'background'],
+  textAlign: ['left', 'center', 'right'], explicitMode: ['show', 'mask', 'hide'],
+  transition: ['auto', 'fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop', 'blur', 'wipe', 'cut'],
+  transitionOut: ['same', 'fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop', 'blur', 'wipe', 'cut'], transitionSpeed: ['fast', 'normal', 'slow'],
+};
+const BUILTIN_FONTS = ['segoe', 'arial', 'verdana', 'tahoma', 'trebuchet', 'georgia', 'impact', 'consolas', 'comic', 'system'];
+const freeOk = s => ['classic', 'compact', 'vinyl'].includes(s.layout);
+const isFree = s => freeOk(s) && s.posMode === 'free';
+const VIS = {
+  custom: s => s.layout === 'custom',
+  nocustom: s => s.layout !== 'custom',
+  placement: freeOk,
+  nofree: s => !freeOk(s) && !['fullscreen', 'custom'].includes(s.layout),
+  grid: s => !['fullscreen', 'custom'].includes(s.layout) && !isFree(s),
+  free: isFree,
+  width: s => !['wide', 'fullscreen', 'custom'].includes(s.layout),
+  cardbg: s => s.layout !== 'fullscreen',
+  dim: s => s.layout === 'fullscreen',
+  cardfx: s => s.layout !== 'fullscreen',
+  autosec: s => s.graphicMode === 'autodismiss',
+  gbtns: s => s.graphicMode !== 'always',
+};
+
+let scene = 'main', scenes = ['main'], state = clone(DEFAULTS), saved = JSON.stringify(state), sel = 'title', ctlFor = null, eDrag = null;
+let lastRect = null, fonts = [], liveStatus = null, drag = null;
+const pv = $('#pv'), wrap = $('#stageWrap'), statusEl = $('#status'), handle = $('#handle'), layer = $('#dragLayer');
+const dirty = () => JSON.stringify(state) !== saved;
+const say = (msg, kind = '') => { statusEl.className = kind; statusEl.textContent = msg; };
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, opts);
+  let d = null; try { d = await r.json(); } catch {}
+  if (!r.ok) throw new Error((d && d.error) || (r.status === 403 ? 'Session expired. Reload the page and sign in again.' : 'Request failed (' + r.status + ')'));
+  return d;
+}
+const jsonOpts = (method, body) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const sq = () => 'scene=' + encodeURIComponent(scene);
+
+// copy that also works on plain-http LAN addresses, where navigator.clipboard is unavailable
+async function copyText(text) {
+  try { if (navigator.clipboard && isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch {}
+  const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+  document.body.appendChild(t); t.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch {}
+  t.remove(); return ok;
+}
+function flashBtn(btn, text) { const old = btn.textContent; btn.textContent = text; setTimeout(() => btn.textContent = old, 1400); }
+
+// ---------- sidebar ----------
+LAYOUTS.forEach(([id, name]) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.dataset.layout = id; b.textContent = name;
+  b.onclick = () => { state.layout = id; push(); };
+  $('#layouts').appendChild(b);
+});
+POS.forEach(p => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.dataset.pos = p; b.title = p.replace('-', ' '); b.setAttribute('aria-label', p.replace('-', ' '));
+  b.onclick = () => { state.position = p; push(); };
+  $('#pos').appendChild(b);
+});
+['Now playing', 'Pre-show music', 'Intermission', 'House audio'].forEach(t => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.textContent = t;
+  b.onclick = () => { state.labelText = t; state.showLabel = true; push(); };
+  $('#chips').appendChild(b);
+});
+$$('.row').forEach((row, i) => { const l = row.querySelector('label'), c = row.querySelector('[data-key]'); if (l && c) { c.id = c.id || 'k_' + c.dataset.key; l.htmlFor = c.id; } });
+
+let fontSig = '';
+function buildFontOptions() {
+  const sig = fonts.map(f => f.file).join('|') + '#' + state.font;
+  if (sig === fontSig) return;
+  fontSig = sig; barKey = '';
+  const sel = $('#fontSel');
+  sel.querySelectorAll('optgroup').forEach(g => g.remove());
+  const names = fonts.map(f => f.family);
+  const cur = state.font;
+  if (cur && cur.startsWith('custom:') && !names.includes(cur.slice(7))) names.push(cur.slice(7));
+  if (names.length) {
+    const g = document.createElement('optgroup'); g.label = 'Uploaded fonts';
+    names.forEach(n => { const o = document.createElement('option'); o.value = 'custom:' + n; o.textContent = fonts.some(f => f.family === n) ? n : n + ' (missing)'; g.appendChild(o); });
+    sel.appendChild(g);
+  }
+  const list = $('#fontList'); list.textContent = '';
+  fonts.forEach(f => {
+    const d = document.createElement('div'), s = document.createElement('span'), b = document.createElement('button');
+    s.textContent = f.family; b.type = 'button'; b.textContent = 'Delete'; b.setAttribute('aria-label', 'Delete font ' + f.family);
+    b.onclick = () => deleteFont(f);
+    d.append(s, b); list.appendChild(d);
+  });
+}
+
+function render() {
+  buildFontOptions();
+  $$('#layouts button').forEach(b => b.classList.toggle('on', b.dataset.layout === state.layout));
+  $('#layoutHint').textContent = (LAYOUTS.find(l => l[0] === state.layout) || [])[2] || '';
+  $$('#pos button').forEach(b => b.classList.toggle('on', b.dataset.pos === state.position));
+  $$('[data-key]').forEach(el => {
+    const v = state[el.dataset.key];
+    if (el.type === 'checkbox') el.checked = !!v; else if (el.value != v) el.value = v;
+  });
+  $$('output').forEach(o => {
+    const k = o.dataset.for, v = state[k];
+    o.textContent = k === 'graphicSeconds' ? v + 's' : ['scale', 'bgOpacity', 'bgDim', 'posX', 'posY'].includes(k) ? v + '%' : v + 'px';
+  });
+  $$('[data-vis]').forEach(el => { el.hidden = !VIS[el.dataset.vis](state); });
+  $$('details.acc').forEach(d => { d.hidden = [...d.querySelector('.accbody').children].every(c => c.hidden); });
+  $('#sceneName').textContent = 'Editing scene: ' + scene;
+  renderEls();
+  if (dirty()) say('Unsaved changes'); else if (statusEl.textContent === 'Unsaved changes') say('');
+  placeHandle();
+}
+let hist = [], hi = -1, histT = null;
+const snapState = () => JSON.stringify(state);
+function updUndo() { $('#undoBtn').disabled = hi <= 0; $('#redoBtn').disabled = hi >= hist.length - 1; }
+function histReset() { clearTimeout(histT); hist = [snapState()]; hi = 0; updUndo(); }
+function histCommit() {
+  clearTimeout(histT); const j = snapState(); if (hist[hi] === j) return;
+  hist = hist.slice(0, hi + 1); hist.push(j); if (hist.length > 200) hist.shift(); hi = hist.length - 1; updUndo();
+}
+function histGo(d) { histCommit(); const n = hi + d; if (n < 0 || n >= hist.length) return; hi = n; state = JSON.parse(hist[hi]); updUndo(); push(true); }
+$('#undoBtn').onclick = () => histGo(-1); $('#redoBtn').onclick = () => histGo(1);
+$('#replayTx').onclick = () => pv.contentWindow && pv.contentWindow.postMessage({ type: 'replay' }, '*');
+function push(noHist) {
+  render(); pv.contentWindow && pv.contentWindow.postMessage({ type: 'settings', settings: state }, '*');
+  if (!noHist) { clearTimeout(histT); histT = setTimeout(histCommit, 350); }   // a whole drag becomes one undo step
+}
+
+$$('[data-key]').forEach(el => {
+  el.addEventListener('input', () => {
+    state[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.type === 'range' ? Number(el.value) : el.value;
+    if (el.dataset.key === 'posX' || el.dataset.key === 'posY') state.posMode = 'free';
+    push();
+  });
+});
+addEventListener('message', e => {
+  if (!e.data || e.source !== pv.contentWindow) return;
+  if (e.data.type === 'ready') push();
+  if (e.data.type === 'rect') { lastRect = e.data.rect; placeHandle(); }
+});
+
+// ---------- preview + drag-to-place ----------
+function fitPv() { pv.style.transform = `scale(${wrap.clientWidth / 1920})`; placeHandle(); }
+new ResizeObserver(fitPv).observe(wrap);
+$$('.bar button[data-bg]').forEach(b => b.onclick = () => {
+  wrap.dataset.bg = b.dataset.bg;
+  $$('.bar button[data-bg]').forEach(x => x.classList.toggle('on', x === b));
+});
+$('#showGuides').onchange = e => layer.classList.toggle('guides', e.target.checked);
+
+function placeHandle() {
+  if (!lastRect || !freeOk(state)) { handle.style.display = 'none'; return; }
+  const k = wrap.clientWidth / lastRect.vw;
+  Object.assign(handle.style, { display: 'block', left: lastRect.x * k + 'px', top: lastRect.y * k + 'px', width: lastRect.w * k + 'px', height: lastRect.h * k + 'px' });
+}
+const round1 = v => Math.round(v * 10) / 10;
+function snapAxis(v, half) {                                  // centre, title-safe edges, screen edges
+  let best = null;
+  for (const [target, guide] of [[50, 50], [5 + half, 5], [95 - half, 95], [half, 0], [100 - half, 100]]) {
+    const d = Math.abs(v - target);
+    if (d < 1.2 && (!best || d < best.d)) best = { d, v: target, guide };
+  }
+  return best;
+}
+function showSnap(sx, sy) {
+  const V = $('#snapV'), H = $('#snapH');
+  V.style.display = sx ? 'block' : 'none'; if (sx) V.style.left = sx.guide + '%';
+  H.style.display = sy ? 'block' : 'none'; if (sy) H.style.top = sy.guide + '%';
+}
+function moveTo(x, y, snapOn) {
+  const r = lastRect, hw = r.w / r.vw * 50, hh = r.h / r.vh * 50;
+  const sx = snapOn ? snapAxis(x, hw) : null, sy = snapOn ? snapAxis(y, hh) : null;
+  if (sx) x = sx.v; if (sy) y = sy.v;
+  state.posMode = 'free'; state.posX = round1(Math.min(100, Math.max(0, x))); state.posY = round1(Math.min(100, Math.max(0, y)));
+  showSnap(sx, sy); push();
+}
+handle.addEventListener('pointerdown', e => {
+  if (!freeOk(state) || !lastRect) return;
+  e.preventDefault(); handle.setPointerCapture(e.pointerId); handle.focus();
+  const r = lastRect;
+  drag = { px: e.clientX, py: e.clientY, cx: (r.x + r.w / 2) / r.vw * 100, cy: (r.y + r.h / 2) / r.vh * 100 };
+  handle.classList.add('drag'); layer.classList.add('dragging');
+  if (state.posMode !== 'free') moveTo(drag.cx, drag.cy, false);   // leave the preset spot without jumping
+});
+handle.addEventListener('pointermove', e => {
+  if (!drag) return;
+  moveTo(drag.cx + (e.clientX - drag.px) / wrap.clientWidth * 100, drag.cy + (e.clientY - drag.py) / wrap.clientHeight * 100, !e.altKey);
+});
+const endDrag = () => { drag = null; handle.classList.remove('drag'); layer.classList.remove('dragging'); showSnap(null, null); };
+handle.addEventListener('pointerup', endDrag); handle.addEventListener('pointercancel', endDrag);
+handle.addEventListener('keydown', e => {
+  const step = e.shiftKey ? 2 : .5, d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+  if (!d || !lastRect) return;
+  e.preventDefault();
+  const r = lastRect, bx = state.posMode === 'free' ? state.posX : (r.x + r.w / 2) / r.vw * 100, by = state.posMode === 'free' ? state.posY : (r.y + r.h / 2) / r.vh * 100;
+  moveTo(bx + d[0], by + d[1], false);
+});
+
+// ---------- build-your-own: element editor ----------
+const handles = {}, chipBtns = {};
+const GUIDES = [0, 5, 50, 95, 100];
+const E = id => state.elements[id];
+const mk = (tag, props) => Object.assign(document.createElement(tag), props);
+const round2 = v => Math.round(v * 100) / 100;
+const PX = { x: 100 / 1920, y: 100 / 1080 };           // one pixel of the 1920x1080 stage, in %
+const isText = id => 'fontSize' in ELEMENT_DEFAULTS[id];
+let selSet = new Set(['title']), barKey = '', alignTo = 'sel';
+const selIds = () => EL_IDS.filter(id => selSet.has(id));
+const bbox = ids => { const x = Math.min(...ids.map(i => E(i).x)), y = Math.min(...ids.map(i => E(i).y)), r = Math.max(...ids.map(i => E(i).x + E(i).w)), b = Math.max(...ids.map(i => E(i).y + E(i).h)); return { x, y, w: r - x, h: b - y }; };
+EL_IDS.forEach(id => {
+  const b = mk('button', { type: 'button', textContent: EL_NAMES[id] }); b.onclick = e => selectEl(id, e.shiftKey || e.ctrlKey);
+  $('#elChips').appendChild(b); chipBtns[id] = b;
+  const h = mk('div', { className: 'eh', tabIndex: 0 }); h.dataset.id = id; h.title = EL_NAMES[id]; h.setAttribute('aria-label', EL_NAMES[id] + '. Drag to move, arrow keys nudge.');
+  ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach(c => { const g = mk('i'); g.dataset.c = c; h.appendChild(g); });
+  $('#elHandles').appendChild(h); handles[id] = h;
+});
+function selectEl(id, add) {
+  if (add) { if (selSet.has(id)) selSet.delete(id); else selSet.add(id); sel = selSet.has(id) ? id : (selIds().pop() || null); }
+  else { selSet = new Set([id]); sel = id; }
+  render();
+}
+function setSel(ids) { selSet = new Set(ids); sel = ids[ids.length - 1] || null; render(); }
+function buildCtl() {
+  const box = $('#elCtl'); box.textContent = ''; ctlFor = sel; if (!sel) return;
+  const d = ELEMENT_DEFAULTS[sel];
+  const row = (label, key, input, out) => { input.id = 'e_' + key; input.dataset.ek = key; const r = mk('div', { className: 'row' }), l = mk('label', { textContent: label, htmlFor: input.id }); r.append(l, input); if (out) { out.dataset.eo = key; r.appendChild(out); } box.appendChild(r); };
+  const range = (label, key, min, max, step) => row(label, key, mk('input', { type: 'range', min, max, step }), mk('output'));
+  box.appendChild(mk('div', { className: 'hint', textContent: 'Editing: ' + EL_NAMES[sel] + (selSet.size > 1 ? ' (+' + (selSet.size - 1) + ' more selected, use the bar above the preview)' : '') }));
+  range('Left', 'x', 0, 100, .1); range('Top', 'y', 0, 100, .1); range('Width', 'w', 1, 100, .1); range('Height', 'h', .2, 100, .1);
+  const vis = mk('label', { className: 'check' }); vis.append(mk('input', { type: 'checkbox' }), ' Visible'); vis.firstChild.dataset.ek = 'visible'; box.appendChild(vis);
+  const sub = mk('div', { className: 'sub' });
+  const rb = mk('button', { type: 'button', className: 'small danger', textContent: 'Reset element' }); rb.dataset.ea = 'reset'; sub.appendChild(rb);
+  box.append(sub, mk('div', { className: 'hint', textContent: 'Font, colours, effects, layers and alignment are in the bar that floats above the selection.' }));
+}
+$('#elCtl').addEventListener('input', e => {
+  const t = e.target, k = t.dataset.ek; if (!k || !sel) return;
+  E(sel)[k] = t.type === 'checkbox' ? t.checked : t.type === 'range' ? Number(t.value) : t.value;
+  push();
+});
+$('#elCtl').addEventListener('click', e => { if (e.target.dataset.ea === 'reset' && sel) { state.elements[sel] = { ...ELEMENT_DEFAULTS[sel] }; push(); } });
+
+// ----- floating contextual bar -----
+const bar = $('#fbar');
+const TEXT_KEYS = ['font', 'fontSize', 'color', 'chameleon', 'bold', 'italic', 'underline', 'uppercase', 'align', 'letterSpacing', 'lineHeight', 'strokeWidth', 'strokeColor', 'pill', 'pillColor'];
+const supports = (id, k) => TEXT_KEYS.includes(k) ? isText(id) : k === 'marquee' ? (id === 'title' || id === 'artist') : k === 'radius' ? 'radius' in ELEMENT_DEFAULTS[id]
+  : (k === 'spin' || k === 'spinSeconds') ? id === 'art' : (k === 'fillColor' || k === 'trackColor') ? id === 'bar' : true;
+const FXD = { opacity: 100, borderWidth: 0, letterSpacing: 0, lineHeight: 1.25, strokeWidth: 0, shadowBlur: 20, spinSeconds: 9, borderColor: '#1db954', strokeColor: '#000000', shadowColor: '#000000', pillColor: '#1db954', fillColor: '#1db954', trackColor: '#555555', font: '' };
+const val = (id, k) => { const v = E(id)[k]; return (v === undefined || v === '') ? (k === 'color' ? state.textColor : FXD[k]) : v; };
+const truthy = (id, k) => k === 'marquee' ? E(id).marquee !== false : !!E(id)[k];
+const CTRL = [
+  { k: 'font', t: 'font', l: 'Font' }, { k: 'fontSize', t: 'num', l: 'Size', min: 8, max: 300 }, { k: 'color', t: 'clr', l: 'Colour' }, { k: 'chameleon', t: 'tog', l: 'Album colour' },
+  { k: 'bold', t: 'tog', l: 'B', s: 'font-weight:900' }, { k: 'italic', t: 'tog', l: 'I', s: 'font-style:italic' }, { k: 'underline', t: 'tog', l: 'U', s: 'text-decoration:underline' }, { k: 'uppercase', t: 'tog', l: 'AA' },
+  { k: 'align', t: 'seg', l: 'Align', o: [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']] },
+  { k: 'letterSpacing', t: 'num', l: 'Spacing', min: -5, max: 40, g: 1 }, { k: 'lineHeight', t: 'num', l: 'Line', min: .5, max: 3, step: .05 },
+  { k: 'radius', t: 'num', l: 'Corners', min: 0, max: 200, g: 1 }, { k: 'opacity', t: 'num', l: 'Opacity', min: 0, max: 100 },
+  { k: 'borderWidth', t: 'num', l: 'Border', min: 0, max: 40 }, { k: 'borderColor', t: 'clr', l: '' },
+  { k: 'shadow', t: 'tog', l: 'Shadow / glow', g: 1 }, { k: 'shadowBlur', t: 'num', l: 'Blur', min: 0, max: 80 }, { k: 'shadowColor', t: 'clr', l: '' },
+  { k: 'strokeWidth', t: 'num', l: 'Outline', min: 0, max: 12, g: 1 }, { k: 'strokeColor', t: 'clr', l: '' },
+  { k: 'pill', t: 'tog', l: 'Pill' }, { k: 'pillColor', t: 'clr', l: '' }, { k: 'marquee', t: 'tog', l: 'Scroll' },
+  { k: 'spin', t: 'tog', l: 'Spin', g: 1 }, { k: 'spinSeconds', t: 'num', l: 'Secs/turn', min: 1, max: 60 },
+  { k: 'fillColor', t: 'clr', l: 'Fill', g: 1 }, { k: 'trackColor', t: 'clr', l: 'Track' },
+];
+function buildBar(ids) {
+  bar.textContent = '';
+  let g = mk('div', { className: 'g' }); bar.appendChild(g);
+  const newGroup = () => { if (g.children.length) { g = mk('div', { className: 'g' }); bar.appendChild(g); } };
+  CTRL.filter(c => ids.some(id => supports(id, c.k))).forEach(c => {
+    if (c.g) newGroup();
+    let el;
+    if (c.t === 'num') el = mk('input', { type: 'number', min: c.min, max: c.max, step: c.step || 1 });
+    else if (c.t === 'clr') el = mk('input', { type: 'color' });
+    else if (c.t === 'font') { el = mk('select'); el.appendChild(mk('option', { value: '', textContent: 'Scene font' })); [...$('#fontSel').options].forEach(o => el.appendChild(mk('option', { value: o.value, textContent: o.textContent }))); }
+    else if (c.t === 'tog') { el = mk('button', { type: 'button', className: 'tg', textContent: c.l }); if (c.s) el.style.cssText = c.s; }
+    else { el = mk('span', { className: 'seg' }); c.o.forEach(([v, t]) => { const b = mk('button', { type: 'button', textContent: t[0], title: 'Align ' + t.toLowerCase() }); b.dataset.v = v; el.appendChild(b); }); }
+    el.dataset.bk = c.k; el.title = el.title || c.l || c.k;
+    if (c.t === 'num' || c.t === 'font' || (c.t === 'clr' && c.l)) { const w = mk('label', { className: 'f' }); if (c.t !== 'font' && c.l) w.appendChild(mk('span', { textContent: c.l })); w.appendChild(el); g.appendChild(w); }
+    else g.appendChild(el);
+  });
+  g = mk('div', { className: 'g' }); bar.appendChild(g);
+  if (ids.length > 1) { const s = mk('select'); s.dataset.al = '1'; [['sel', 'Align to selection'], ['stage', 'Align to stage']].forEach(([v, t]) => s.appendChild(mk('option', { value: v, textContent: t }))); s.value = alignTo; g.appendChild(s); }
+  [['al-l', 'Left', 'Align left edges'], ['al-c', 'Centre', 'Align horizontal centres'], ['al-r', 'Right', 'Align right edges'], ['al-t', 'Top', 'Align top edges'], ['al-m', 'Middle', 'Align vertical centres'], ['al-b', 'Bottom', 'Align bottom edges']]
+    .forEach(([a, t, ti]) => { const b = mk('button', { type: 'button', textContent: t, title: ti }); b.dataset.ba = a; g.appendChild(b); });
+  g = mk('div', { className: 'g' }); bar.appendChild(g);
+  [['cx', 'Centre H'], ['cy', 'Centre V'], ['front', 'Forward'], ['back', 'Backward'], ['lock', 'Lock'], ['hide', 'Hide']].forEach(([a, t]) => { const b = mk('button', { type: 'button', textContent: t, className: a === 'hide' ? 'danger' : '' }); b.dataset.ba = a; g.appendChild(b); });
+}
+function syncBar(ids) {
+  bar.querySelectorAll('[data-bk]').forEach(el => {
+    const k = el.dataset.bk, p = ids.find(id => supports(id, k)); if (!p) return;
+    if (el.classList.contains('tg')) el.classList.toggle('on', truthy(p, k));
+    else if (el.classList.contains('seg')) [...el.children].forEach(b => b.classList.toggle('on', b.dataset.v === E(p).align));
+    else if (document.activeElement !== el) { const v = k === 'font' ? (E(p).font || '') : val(p, k); if (el.value != v) el.value = v; }
+  });
+  const lk = bar.querySelector('[data-ba=lock]'); if (lk) { const all = ids.every(id => E(id).locked); lk.classList.toggle('on', all); lk.textContent = all ? 'Unlock' : 'Lock'; }
+}
+function placeBar() {
+  const ids = selIds();
+  if (state.layout !== 'custom' || !ids.length) { bar.hidden = true; barKey = ''; return; }
+  const key = ids.join(); if (key !== barKey) { buildBar(ids); barKey = key; }
+  syncBar(ids); bar.hidden = false;
+  const cw = wrap.clientWidth, ch = wrap.clientHeight, bb = bbox(ids), bw = bar.offsetWidth, bh = bar.offsetHeight;
+  let left = bb.x / 100 * cw, top = bb.y / 100 * ch - bh - 10;
+  if (top < 4) top = (bb.y + bb.h) / 100 * ch + 10;
+  if (top + bh > ch - 4) top = Math.max(4, ch - bh - 4);
+  bar.style.left = Math.min(Math.max(4, left), Math.max(4, cw - bw - 4)) + 'px'; bar.style.top = top + 'px';
+}
+new ResizeObserver(() => placeBar()).observe(wrap);
+function applyKey(k, v) { let n = 0; selIds().forEach(id => { if (supports(id, k)) { E(id)[k] = v; n++; } }); if (n) push(); }
+bar.addEventListener('input', e => {
+  const t = e.target; if (t.dataset.al) { alignTo = t.value; return; }
+  const k = t.dataset.bk; if (!k) return;
+  if (t.type === 'number') { if (t.value === '' || !Number.isFinite(Number(t.value))) return; applyKey(k, Number(t.value)); } else applyKey(k, t.value);
+});
+bar.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.classList.contains('tg')) { const k = b.dataset.bk, p = selIds().find(id => supports(id, k)); if (p) applyKey(k, !truthy(p, k)); }
+  else if (b.parentNode.classList.contains('seg')) applyKey('align', b.dataset.v);
+  else if (b.dataset.ba) action(b.dataset.ba);
+});
+function alignIds(mode, ids) {
+  if (!ids.length) return;
+  const bb = (ids.length === 1 || alignTo === 'stage') ? { x: 0, y: 0, w: 100, h: 100 } : bbox(ids);
+  ids.forEach(id => {
+    const t = E(id);
+    if (mode === 'l') t.x = bb.x; else if (mode === 'c') t.x = bb.x + (bb.w - t.w) / 2; else if (mode === 'r') t.x = bb.x + bb.w - t.w;
+    else if (mode === 't') t.y = bb.y; else if (mode === 'm') t.y = bb.y + (bb.h - t.h) / 2; else if (mode === 'b') t.y = bb.y + bb.h - t.h;
+    t.x = round2(t.x); t.y = round2(t.y);
+  });
+}
+function action(a) {
+  const ids = selIds(), mv = ids.filter(id => !E(id).locked);
+  if (a === 'front') ids.forEach(id => E(id).z = Math.min(20, E(id).z + 1));
+  else if (a === 'back') ids.forEach(id => E(id).z = Math.max(1, E(id).z - 1));
+  else if (a === 'lock') { const nv = !ids.every(id => E(id).locked); ids.forEach(id => E(id).locked = nv); }
+  else if (a === 'hide') { ids.forEach(id => E(id).visible = false); setSel([]); }
+  else if (a === 'cx' || a === 'cy') { if (mv.length) { const bb = bbox(mv); if (a === 'cx') { const d = (100 - bb.w) / 2 - bb.x; mv.forEach(id => E(id).x = round2(E(id).x + d)); } else { const d = (100 - bb.h) / 2 - bb.y; mv.forEach(id => E(id).y = round2(E(id).y + d)); } } }
+  else if (a.startsWith('al-')) alignIds(a.slice(3), mv);
+  push();
+}
+function renderEls() {
+  const on = state.layout === 'custom';
+  $('#hit').style.display = on ? 'block' : 'none';
+  EL_IDS.forEach(id => {
+    const t = E(id), h = handles[id];
+    chipBtns[id].classList.toggle('on', selSet.has(id)); chipBtns[id].classList.toggle('off', !t.visible);
+    h.classList.toggle('off', !on || !t.visible); h.classList.toggle('sel', selSet.has(id)); h.classList.toggle('one', selSet.size === 1); h.classList.toggle('lk', !!t.locked);
+    Object.assign(h.style, { left: t.x + '%', top: t.y + '%', width: t.w + '%', height: t.h + '%', zIndex: 3 + t.z });
+  });
+  if (!on || !sel) { if (ctlFor) { $('#elCtl').textContent = ''; ctlFor = null; } placeBar(); return; }
+  if (ctlFor !== sel || ($('#elCtl .hint') && $('#elCtl .hint').textContent.includes('more') !== selSet.size > 1)) buildCtl();
+  const t = E(sel);
+  $$('#elCtl [data-ek]').forEach(el => {
+    const k = el.dataset.ek, v = t[k];
+    if (el.type === 'checkbox') el.checked = !!v; else if (el.value != v) el.value = v;
+  });
+  $$('#elCtl [data-eo]').forEach(o => { o.textContent = t[o.dataset.eo] + '%'; });
+  placeBar();
+}
+const snap1 = vals => { let best = null; for (const v of vals) for (const g of GUIDES) { const d = Math.abs(v - g); if (d < 1 && (!best || d < best.d)) best = { d, delta: g - v, guide: g }; } return best; };
+
+// ----- drag marquee on empty stage -----
+let mq = null; const hit = $('#hit'), mqBox = $('#marq');
+hit.addEventListener('pointerdown', e => {
+  e.preventDefault(); hit.setPointerCapture(e.pointerId);
+  const r = wrap.getBoundingClientRect();
+  mq = { x0: e.clientX - r.left, y0: e.clientY - r.top, base: e.shiftKey ? [...selSet] : [], moved: false, r };
+  if (!e.shiftKey && selSet.size) setSel([]);
+});
+hit.addEventListener('pointermove', e => {
+  if (!mq) return;
+  const x1 = e.clientX - mq.r.left, y1 = e.clientY - mq.r.top;
+  if (!mq.moved && Math.hypot(x1 - mq.x0, y1 - mq.y0) < 4) return;
+  mq.moved = true;
+  const L = Math.min(mq.x0, x1), T = Math.min(mq.y0, y1), W = Math.abs(x1 - mq.x0), H = Math.abs(y1 - mq.y0), cw = wrap.clientWidth, ch = wrap.clientHeight;
+  Object.assign(mqBox.style, { display: 'block', left: L + 'px', top: T + 'px', width: W + 'px', height: H + 'px' });
+  const ids = EL_IDS.filter(id => { const t = E(id); return t.visible && t.x / 100 * cw < L + W && (t.x + t.w) / 100 * cw > L && t.y / 100 * ch < T + H && (t.y + t.h) / 100 * ch > T; });
+  setSel([...new Set([...mq.base, ...ids])]);
+});
+const endMq = () => { mq = null; mqBox.style.display = 'none'; };
+hit.addEventListener('pointerup', endMq); hit.addEventListener('pointercancel', endMq);
+
+// ----- drag / resize (8 handles, group move) -----
+$('#elHandles').addEventListener('pointerdown', e => {
+  const h = e.target.closest('.eh'); if (!h) return;
+  e.preventDefault(); const id = h.dataset.id, c = e.target.dataset.c || null;
+  if (e.shiftKey && !c) { selectEl(id, true); return; }
+  if (!selSet.has(id)) selectEl(id);
+  h.focus();
+  if (E(id).locked) return;
+  const ids = c ? [id] : selIds().filter(i => !E(i).locked && E(i).visible);
+  eDrag = { id, c, px: e.clientX, py: e.clientY, os: Object.fromEntries(ids.map(i => [i, { ...E(i) }])), h, moved: false };
+  h.setPointerCapture(e.pointerId); h.classList.add('drag'); layer.classList.add('dragging');
+});
+$('#elHandles').addEventListener('pointermove', e => {
+  if (!eDrag) return;
+  const d = eDrag, c = d.c, dx = (e.clientX - d.px) / wrap.clientWidth * 100, dy = (e.clientY - d.py) / wrap.clientHeight * 100;
+  if (!d.moved && Math.hypot(e.clientX - d.px, e.clientY - d.py) < 3) return;
+  d.moved = true; let sx = null, sy = null;
+  if (!c) {                                                  // move the whole selection as one box
+    const ids = Object.keys(d.os), o = ids.map(i => d.os[i]);
+    const bx = Math.min(...o.map(t => t.x)), by = Math.min(...o.map(t => t.y)), bw = Math.max(...o.map(t => t.x + t.w)) - bx, bh = Math.max(...o.map(t => t.y + t.h)) - by;
+    let nx = bx + dx, ny = by + dy;
+    if (!e.altKey) { sx = snap1([nx, nx + bw / 2, nx + bw]); sy = snap1([ny, ny + bh / 2, ny + bh]); if (sx) nx += sx.delta; if (sy) ny += sy.delta; }
+    nx = Math.min(100 - bw, Math.max(0, nx)); ny = Math.min(100 - bh, Math.max(0, ny));
+    ids.forEach(i => { E(i).x = round2(d.os[i].x + nx - bx); E(i).y = round2(d.os[i].y + ny - by); });
+  } else {
+    const o = d.os[d.id]; let { x, y, w, h } = o;
+    if (c.includes('e')) w += dx; else if (c.includes('w')) { x += dx; w -= dx; }
+    if (c.includes('s')) h += dy; else if (c.includes('n')) { y += dy; h -= dy; }
+    if (w < 1) { if (c.includes('w')) x = o.x + o.w - 1; w = 1; }
+    if (h < .2) { if (c.includes('n')) y = o.y + o.h - .2; h = .2; }
+    if (!e.altKey) {
+      if (c.includes('e')) { sx = snap1([x + w]); if (sx) w += sx.delta; } else if (c.includes('w')) { sx = snap1([x]); if (sx) { x += sx.delta; w -= sx.delta; } }
+      if (c.includes('s')) { sy = snap1([y + h]); if (sy) h += sy.delta; } else if (c.includes('n')) { sy = snap1([y]); if (sy) { y += sy.delta; h -= sy.delta; } }
+    }
+    if (x < 0) { w += x; x = 0; } if (y < 0) { h += y; y = 0; } w = Math.min(w, 100 - x); h = Math.min(h, 100 - y);
+    Object.assign(E(d.id), { x: round2(x), y: round2(y), w: round2(w), h: round2(h) });
+  }
+  showSnap(sx, sy); push();
+});
+const endElDrag = e => {
+  if (!eDrag) return;
+  const d = eDrag; d.h.classList.remove('drag'); eDrag = null; layer.classList.remove('dragging'); showSnap(null, null);
+  if (!d.moved && !d.c && selSet.size > 1 && !(e && e.shiftKey)) selectEl(d.id);   // plain click inside a group: just that one
+};
+$('#elHandles').addEventListener('pointerup', endElDrag); $('#elHandles').addEventListener('pointercancel', () => endElDrag());
+
+// ----- keyboard: undo/redo, select all, nudge, delete -----
+addEventListener('keydown', e => {
+  const t = e.target, tag = t.tagName, typing = tag === 'TEXTAREA' || tag === 'SELECT' || (tag === 'INPUT' && !['checkbox', 'button', 'color', 'range'].includes(t.type));
+  const mod = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
+  if (typing) return;
+  if (mod && key === 'z') { e.preventDefault(); histGo(e.shiftKey ? 1 : -1); return; }
+  if (mod && key === 'y') { e.preventDefault(); histGo(1); return; }
+  if (state.layout !== 'custom' || t.type === 'range') return;
+  if (mod && key === 'a') { e.preventDefault(); setSel(EL_IDS.filter(id => E(id).visible)); return; }
+  if (key === 'escape') { setSel([]); return; }
+  const ids = selIds();
+  if (!ids.length) return;
+  if (key === 'delete' || key === 'backspace') { e.preventDefault(); action('hide'); return; }
+  const st = e.shiftKey ? 10 : 1, d = { arrowleft: [-st, 0], arrowright: [st, 0], arrowup: [0, -st], arrowdown: [0, st] }[key];
+  if (!d) return;
+  e.preventDefault();
+  const mv = ids.filter(id => !E(id).locked && E(id).visible); if (!mv.length) return;
+  const bb = bbox(mv), dx = Math.min(100 - bb.x - bb.w, Math.max(-bb.x, d[0] * PX.x)), dy = Math.min(100 - bb.y - bb.h, Math.max(-bb.y, d[1] * PX.y));
+  mv.forEach(id => { E(id).x = round2(E(id).x + dx); E(id).y = round2(E(id).y + dy); });
+  push();
+});
+
+// ---------- sidebar accordion ----------
+(function accordion() {
+  let open; try { open = JSON.parse(localStorage.getItem('np-acc')); } catch {}
+  if (!Array.isArray(open)) open = ['Layout', 'Elements', 'Position'];
+  $$('aside h2').forEach(h => {
+    const det = mk('details', { className: 'acc', open: open.includes(h.textContent) }), body = mk('div', { className: 'accbody' });
+    det.appendChild(mk('summary', { textContent: h.textContent }));
+    for (let n = h.nextElementSibling; n && n.tagName !== 'H2' && !n.classList.contains('btns') && !n.querySelector(':scope > h2');) { const nx = n.nextElementSibling; body.appendChild(n); n = nx; }
+    det.appendChild(body); h.replaceWith(det);
+    det.addEventListener('toggle', () => {
+      const names = $$('aside details.acc[open] > summary').map(x => x.textContent);
+      try { localStorage.setItem('np-acc', JSON.stringify(names)); } catch {}
+    });
+  });
+})();
+
+// ---------- scenes ----------
+function renderTabs() {
+  const box = $('#tabs'); box.textContent = '';
+  scenes.forEach(id => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tab' + (id === scene ? ' on' : '');
+    const n = liveStatus && liveStatus.displays[id];
+    b.append(id); if (n) { const i = document.createElement('i'); i.textContent = n + (n === 1 ? ' display' : ' displays'); b.appendChild(i); }
+    b.onclick = () => switchScene(id);
+    box.appendChild(b);
+  });
+  $('#delScene').hidden = scene === 'main';
+  $('#obsUrl').textContent = new URL(scene === 'main' ? './' : encodeURIComponent(scene), location.href).href;
+}
+async function switchScene(id) {
+  if (id === scene) return;
+  if (dirty() && !confirm('Discard the unsaved changes to the "' + scene + '" scene?')) return;
+  await loadScene(id);
+}
+async function loadScene(id) {
+  try {
+    scene = id;
+    const s = await api('api/settings?' + sq(), { cache: 'no-store' });
+    state = { ...clone(DEFAULTS), ...s }; state.elements = mergeEls(state.elements); saved = JSON.stringify(state);
+    selSet = new Set(['title']); sel = 'title'; say(''); renderTabs(); push(true); histReset();
+  } catch (e) { say(e.message, 'err'); }
+}
+$('#addForm').onsubmit = async e => {
+  e.preventDefault();
+  const name = $('#newScene').value.trim(); if (!name) return;
+  const slug = name.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24);
+  if (RESERVED.includes(slug)) return say('"' + slug + '" is reserved because the server already uses /' + slug + '. Pick another name, e.g. ' + slug + '-scene.', 'err');
+  if (dirty() && !confirm('The new scene copies the saved settings of "' + scene + '". Discard your unsaved changes?')) return;
+  try {
+    const r = await api('api/scenes', jsonOpts('POST', { id: name, from: scene }));
+    scenes = r.scenes; $('#newScene').value = '';
+    await loadScene(r.id); say('Scene created. Its link is shown below the preview.', 'ok');
+  } catch (err) { say(err.message, 'err'); }
+};
+$('#delScene').onclick = async () => {
+  if (!confirm('Delete the "' + scene + '" scene? Any OBS source using its link will stop updating.')) return;
+  try { const r = await api('api/scenes?id=' + encodeURIComponent(scene), { method: 'DELETE' }); scenes = r.scenes; await loadScene('main'); }
+  catch (err) { say(err.message, 'err'); }
+};
+
+// ---------- status ----------
+async function pollStatus() {
+  try {
+    liveStatus = await api('api/status', { cache: 'no-store' });
+    const s = liveStatus, box = $('#pills'); box.textContent = '';
+    const pill = (dot, html) => { const p = document.createElement('span'); p.className = 'pill'; const d = document.createElement('i'); d.className = 'dot ' + dot; p.appendChild(d); p.appendChild(html); box.appendChild(p); return p; };
+    const el = (tag, text) => { const e = document.createElement(tag); e.textContent = text; return e; };
+    const sp = document.createElement('span');
+    if (!s.spotify) { sp.append('Spotify: '); const a = el('a', 'Not connected, log in'); a.href = 'login'; sp.appendChild(a); }
+    else { sp.append('Spotify: '); sp.appendChild(el('b', s.spotifyError ? 'Connected, errors' : 'Connected')); }
+    pill(!s.spotify ? 'bad' : s.spotifyError ? 'warn' : 'ok', sp);
+    const src = document.createElement('span'); src.append('Source: ');
+    src.appendChild(el('b', s.playing ? (s.source === 'webhook' ? 'Webhook' : 'Spotify') + (s.title ? ': ' + s.title : '') : 'Idle, nothing playing'));
+    pill(s.playing ? 'ok' : '', src);
+    const dp = document.createElement('span'); dp.append('Connected displays: '); dp.appendChild(el('b', String(s.total)));
+    pill(s.total ? 'ok' : '', dp);
+    $('#redirectUri').textContent = s.redirectUri; $('#redirectWarn').hidden = s.redirectOk;
+    renderTabs();
+  } catch {}
+}
+
+// ---------- fonts ----------
+async function loadFonts() { try { fonts = (await api('api/fonts', { cache: 'no-store' })).fonts; buildFontOptions(); render(); } catch {} }
+$('#fontBtn').onclick = () => $('#fontFile').click();
+$('#fontFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  say('Uploading font...');
+  try {
+    const r = await api('api/fonts?name=' + encodeURIComponent(f.name), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: f });
+    await loadFonts();
+    pv.contentWindow.postMessage({ type: 'fonts' }, '*');
+    state.font = 'custom:' + r.family; push(); say('Font added: ' + r.family + '. Save to use it on the live overlay.', 'ok');
+  } catch (err) { say(err.message, 'err'); }
+};
+async function deleteFont(f) {
+  if (!confirm('Delete the font "' + f.family + '"? Scenes using it fall back to the default font.')) return;
+  try {
+    await api('api/fonts?file=' + encodeURIComponent(f.file), { method: 'DELETE' });
+    if (state.font === 'custom:' + f.family) state.font = 'segoe';
+    await loadFonts(); pv.contentWindow.postMessage({ type: 'fonts' }, '*'); push();
+  } catch (err) { say(err.message, 'err'); }
+}
+
+// ---------- graphic control, copy buttons ----------
+$$('[data-trigger]').forEach(b => b.onclick = async () => {
+  try { await api('api/trigger?' + sq(), jsonOpts('POST', { action: b.dataset.trigger })); say('Sent to the live overlay.', 'ok'); }
+  catch (e) { say(e.message, 'err'); }
+});
+$('#copyTrigger').onclick = async e => {
+  const u = new URL('api/trigger?' + sq(), location.href).href;
+  const ok = await copyText(`curl -X POST "${u}" -H "Authorization: Bearer YOUR_ADMIN_KEY" -H "Content-Type: application/json" -d '{"action":"show"}'`);
+  flashBtn(e.target, ok ? 'Copied' : 'Copy failed');
+};
+$$('[data-copy]').forEach(b => b.onclick = async () => flashBtn(b, (await copyText($(b.dataset.copy).textContent)) ? 'Copied' : 'Copy failed'));
+
+// ---------- presets ----------
+function cleanImport(o) {
+  const out = {};
+  if (!o || typeof o !== 'object') return out;
+  for (const [k, def] of Object.entries(DEFAULTS)) {
+    if (!(k in o)) continue;
+    const v = o[k];
+    if (k === 'elements') { if (v && typeof v === 'object') out[k] = mergeEls(v); continue; }
+    if (typeof def === 'number') { if (Number.isFinite(Number(v))) out[k] = Number(v); }
+    else if (typeof def === 'boolean') { if (typeof v === 'boolean') out[k] = v; }
+    else if (typeof v === 'string') out[k] = v;
+  }
+  for (const [k, list] of Object.entries(ENUMS)) if (k in out && !list.includes(out[k])) delete out[k];
+  for (const k of ['bgColor', 'textColor', 'accent']) if (k in out && !/^#[0-9a-f]{6}$/i.test(out[k])) delete out[k];
+  if ('font' in out && !BUILTIN_FONTS.includes(out.font) && !/^custom:[\w .-]{1,60}$/.test(out.font)) delete out.font;
+  return out;
+}
+$('#exportBtn').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
+  a.download = 'nowplaying-' + scene + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('#copyJson').onclick = async e => flashBtn(e.target, (await copyText(JSON.stringify(state, null, 2))) ? 'Copied' : 'Copy failed');
+$('#importBtn').onclick = () => $('#importFile').click();
+$('#importFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const picked = cleanImport(JSON.parse(await f.text()));
+    if (!Object.keys(picked).length) throw new Error('No overlay settings found in that file.');
+    state = { ...state, ...picked }; push(); say('Preset imported. Check the preview, then Save.');
+  } catch (err) { say(err instanceof SyntaxError ? 'That file is not valid JSON.' : err.message, 'err'); }
+};
+$('#reset').onclick = () => { if (confirm('Reset every setting on the "' + scene + '" scene to the defaults?')) { state = clone(DEFAULTS); push(); } };
+
+// ---------- save ----------
+async function save() {
+  say('Saving...');
+  try {
+    state = await api('api/settings?' + sq(), jsonOpts('POST', state));
+    saved = JSON.stringify(state); push(); say('Saved. OBS is updating now.', 'ok');
+  } catch (e) { say(e.message, 'err'); }
+}
+$('#save').onclick = save;
+addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); } });
+addEventListener('beforeunload', e => { if (dirty()) { e.preventDefault(); e.returnValue = ''; } });
+$('#logout').onclick = async () => { try { await fetch('api/logout', { method: 'POST' }); } catch {} location.reload(); };
+
+// ---------- start ----------
+pv.src = './?preview=1';   // your real song, or the demo card automatically when nothing is playing
+(async () => {
+  try { scenes = (await api('api/scenes')).scenes; } catch {}
+  const want = decodeURIComponent((location.hash || '').slice(1));
+  await loadScene(scenes.includes(want) ? want : 'main');
+  fitPv(); loadFonts(); pollStatus(); setInterval(pollStatus, 3000);
+})();
+</script>
+</body>
+</html>
