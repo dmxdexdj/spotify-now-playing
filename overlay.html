@@ -78,14 +78,14 @@
 
   body.layout-vinyl { --art: 104px; }
   .layout-vinyl #card { padding-left: 22px; gap: 20px; }
-  .layout-vinyl #artwrap { border-radius: 50%; box-shadow: 0 6px 18px 7px rgba(0,0,0,.5); } /* fixed light source: never rotates */
-  .layout-vinyl #art { border-radius: 50%; animation: spin 9s linear infinite;
-    box-shadow: 0 0 0 5px #0e0e0e, 0 0 0 7px #262626; }
-  body.paused.layout-vinyl #art { animation-play-state: paused; }
-  .layout-vinyl #artwrap::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  /* the record look: shared by the Spinning vinyl layout, Full screen (option) and a spinning album art in Build your own */
+  .rec #artwrap { border-radius: 50%; box-shadow: 0 6px 18px 7px rgba(0,0,0,.5); } /* fixed light source: never rotates */
+  .rec #art { border-radius: 50%; animation: spin var(--spin, 9s) linear infinite; box-shadow: 0 0 0 5px #0e0e0e, 0 0 0 7px #262626; }
+  body.paused.rec #art { animation-play-state: paused; }
+  .rec #artwrap::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
     background: repeating-radial-gradient(circle, transparent 0 3px, rgba(0,0,0,.14) 3px 4px),
                 conic-gradient(from 25deg, transparent 0 22%, rgba(255,255,255,.14) 27%, transparent 32% 72%, rgba(255,255,255,.1) 77%, transparent 82%); }
-  .layout-vinyl #hole { display: block; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  .rec #hole { display: block; position: absolute; left: 50%; top: 50%; width: 17%; height: 17%; transform: translate(-50%, -50%);
     border-radius: 50%; background: #101010; box-shadow: 0 0 0 3px #2a2a2a; z-index: 1; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -97,6 +97,7 @@
   .layout-fullscreen .label { margin-bottom: 10px; }
   /* build-your-own: freeform canvas. Each element is placed in % of the screen from settings (see applySettings). */
   #panel { display: none; }
+  .xtra { display: none; }
   .layout-custom #pos { position: absolute; inset: 0; width: auto; }
   .layout-custom #card { position: absolute; inset: 0; width: auto; padding: 0; gap: 0; display: block; background: none; box-shadow: none; backdrop-filter: none; border-radius: 0; }
   .layout-custom #card::after { display: none; }
@@ -110,9 +111,13 @@
   .layout-custom .label { overflow: hidden; white-space: nowrap; }
   .layout-custom .line { display: flex; align-items: center; }
   .layout-custom .line span { flex: none; max-width: none; }
+  .layout-custom .xtra { display: flex; }
   .layout-custom #title, .layout-custom #artist { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; margin: 0; }
-  #art.spin { animation: spin var(--spin, 9s) linear infinite; }
-  body.paused #art.spin { animation-play-state: paused; }
+  .layout-fullscreen.rec #artwrap { box-shadow: 0 22px 70px 10px rgba(0,0,0,.55); }
+  .layout-fullscreen.rec #art { border-radius: 50%; box-shadow: 0 0 0 12px #0e0e0e, 0 0 0 17px #262626; }
+  .layout-fullscreen.rec #artwrap::after { background: repeating-radial-gradient(circle, transparent 0 6px, rgba(0,0,0,.14) 6px 8px), conic-gradient(from 25deg, transparent 0 22%, rgba(255,255,255,.14) 27%, transparent 32% 72%, rgba(255,255,255,.1) 77%, transparent 82%); }
+  .layout-fullscreen.rec #hole { box-shadow: 0 0 0 8px #2a2a2a; }
+  .layout-custom.rec #artwrap { overflow: visible; }
   .layout-fullscreen #bar { height: 6px; margin-top: 20px; border-radius: 3px; }
 </style>
 <style id="customCss"></style>
@@ -161,6 +166,7 @@ const ELEMENT_DEFAULTS = {
   artist: { x: 8.6, y: 89.5, w: 16, h: 2.4, z: 2, visible: true, fontSize: 15, weight: 400, color: '', align: 'left' },
   bar:    { x: 8.6, y: 93,   w: 16, h: 0.4, z: 2, visible: true, radius: 4 },
 };
+const TXT_DEF = { x: 10, y: 10, w: 24, h: 5, z: 3, visible: true, fontSize: 32, weight: 700, color: '', align: 'left', text: 'New text' };
 const EL_NODE = { panel: 'panel', art: 'artwrap', label: 'label', title: 'titleLine', artist: 'artistLine', bar: 'bar' };
 const EL_COLOR = { label: 'var(--accent)', title: 'var(--fg)', artist: 'var(--sub)' };
 const ALIGN = { top: 'flex-start', left: 'flex-start', center: 'center', bottom: 'flex-end', right: 'flex-end' };
@@ -173,7 +179,7 @@ const DEFAULTS = {
   showArt: true, showProgress: true, showLabel: true, labelText: 'Now playing',
   showPaused: false, shadow: true, blur: true,
   graphicMode: 'always', graphicSeconds: 8, flashOnChange: false, explicitMode: 'show', customCss: '', elements: ELEMENT_DEFAULTS,
-  transition: 'auto', transitionOut: 'same', transitionSpeed: 'normal',
+  transition: 'auto', transitionOut: 'same', transitionSpeed: 'normal', fsRecord: false,
 };
 const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
 const svgUri = s => 'data:image/svg+xml;utf8,' + encodeURIComponent(s);
@@ -260,6 +266,9 @@ function applySettings(s) {
   $('customCss').textContent = s.customCss || '';
 
   applyElements(layout === 'custom', s.elements);
+  const ae = s.elements && s.elements.art, rec = layout === 'vinyl' || (layout === 'fullscreen' && s.fsRecord) || (layout === 'custom' && !!(ae && ae.spin));
+  document.body.classList.toggle('rec', rec);
+  set('--spin', ((layout === 'custom' && ae && ae.spinSeconds) || 9) + 's');
   const free = s.posMode === 'free' && FREE_OK.includes(layout);
   posEl.classList.toggle('free', free);
   const [v, h] = s.position === 'center' ? ['center', 'center'] : s.position.split('-');
@@ -304,12 +313,15 @@ function applySettings(s) {
 function applyElements(on, els) {
   root.style.setProperty('--vk', innerHeight / 1080);
   const CLR = ['left', 'top', 'width', 'height', 'zIndex', 'display', 'fontSize', 'fontWeight', 'color', 'textAlign', 'borderRadius', 'justifyContent', 'opacity', 'border', 'boxShadow', 'letterSpacing', 'lineHeight', 'textTransform', 'fontStyle', 'textDecoration', 'fontFamily', 'webkitTextStroke', 'textShadow', 'filter'];
-  for (const [id, d] of Object.entries(ELEMENT_DEFAULTS)) {
-    const e = $(EL_NODE[id]), st = e.style, c = { ...d, ...((els && els[id]) || {}) }, sp = e.querySelector('span');
+  const extra = Object.keys(els || {}).filter(k => /^txt[1-9]$/.test(k));
+  document.querySelectorAll('.xtra').forEach(n => { if (!on || !extra.includes(n.dataset.id)) n.remove(); });
+  extra.forEach(k => { if (on && !document.querySelector('.xtra[data-id=' + k + ']')) { const n = document.createElement('div'); n.className = 'line xtra'; n.dataset.id = k; n.id = 'x_' + k; n.appendChild(document.createElement('span')).id = 'xt_' + k; card.appendChild(n); } });
+  for (const [id, d] of [...Object.entries(ELEMENT_DEFAULTS), ...(on ? extra.map(k => [k, TXT_DEF]) : [])]) {
+    const e = EL_NODE[id] ? $(EL_NODE[id]) : $('x_' + id), st = e.style, c = { ...d, ...((els && els[id]) || {}) }, sp = e.querySelector('span');
+    if (!EL_NODE[id]) { sp.textContent = c.text || ''; fit('x_' + id, 'xt_' + id); }
     for (const k of CLR) st.removeProperty(k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()));
     if (sp) sp.removeAttribute('style');
     e.style.removeProperty('--fill'); e.style.removeProperty('--track'); e.classList.remove('nomarquee');
-    if (id === 'art') { artEl.classList.remove('spin'); artEl.style.removeProperty('--spin'); artEl.style.removeProperty('border-radius'); }
     if (!on) continue;
     st.left = c.x + '%'; st.top = c.y + '%'; st.width = c.w + '%'; st.height = c.h + '%'; st.zIndex = c.z;
     if (!c.visible) st.display = 'none';
@@ -320,7 +332,7 @@ function applyElements(on, els) {
     if (c.shadow) { const b = c.shadowBlur || 20; if (c.fontSize) st.textShadow = `0 2px ${b}px ${glow}`; else st.boxShadow = `0 4px ${b}px ${glow}`; }
     if (c.fontSize) {
       st.fontSize = `calc(${c.fontSize}px * var(--vk, 1))`; st.fontWeight = c.bold ? 900 : c.weight; st.textAlign = c.align;
-      st.color = c.chameleon ? 'var(--accent)' : (c.color || EL_COLOR[id]);
+      const base = c.chameleon ? 'var(--accent)' : (c.color || EL_COLOR[id] || 'var(--fg)'); st.color = base;
       if (id !== 'label') st.justifyContent = { left: 'flex-start', center: 'center', right: 'flex-end' }[c.align];
       if (c.letterSpacing) st.letterSpacing = c.letterSpacing / 10 + 'em';
       if (c.lineHeight) st.lineHeight = c.lineHeight;
@@ -329,11 +341,20 @@ function applyElements(on, els) {
       if (c.underline) st.textDecoration = 'underline';
       if (c.font) st.fontFamily = fontStack(c.font);
       if (c.strokeWidth) st.webkitTextStroke = `${c.strokeWidth}px ${c.strokeColor || '#000000'}`;
+      if (c.fx && c.fx !== 'none') {                          // one-click text effect presets
+        const k = (c.fxSize === undefined ? 50 : c.fxSize) / 50, f = c.fxColor || (c.fx === 'neon' ? '#1db954' : c.fx === 'echo' ? '#888888' : '#000000');
+        if (c.fx === 'shadow') st.textShadow = `${.06 * k}em ${.06 * k}em 0 ${f}`;
+        else if (c.fx === 'lift') st.textShadow = `0 ${.08 * k}em ${.25 * k}em rgba(0,0,0,.45)`;
+        else if (c.fx === 'hollow') { st.color = 'transparent'; st.webkitTextStroke = `${Math.max(1, 2 * k)}px ${base}`; }
+        else if (c.fx === 'neon') st.textShadow = `0 0 ${.1 * k}em ${f}, 0 0 ${.3 * k}em ${f}, 0 0 ${.7 * k}em ${f}`;
+        else if (c.fx === 'echo') st.textShadow = `${.07 * k}em ${.07 * k}em 0 ${f}, ${.14 * k}em ${.14 * k}em 0 ${f}66`;
+        else if (c.fx === 'glitch') st.textShadow = `${-.05 * k}em 0 #ff0050, ${.05 * k}em 0 #00f0ff`;
+      }
       if (c.pill && sp) { sp.style.background = c.pillColor || 'var(--accent)'; sp.style.padding = `0 ${(c.padX || 12)}px`; sp.style.borderRadius = '999px'; }
       if (c.marquee === false) e.classList.add('nomarquee');
     }
     if (id === 'bar') { if (c.fillColor) e.style.setProperty('--fill', c.fillColor); if (c.trackColor) e.style.setProperty('--track', c.trackColor); }
-    if (id === 'art' && c.spin) { artEl.classList.add('spin'); artEl.style.setProperty('--spin', (c.spinSeconds || 9) + 's'); if (c.radius !== undefined) artEl.style.borderRadius = '50%'; }
+    if (id === 'art' && c.spin) { st.borderRadius = '50%'; st.height = c.w * innerWidth / innerHeight + '%'; }   // a record is always round
   }
 }
 

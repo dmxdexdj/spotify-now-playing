@@ -152,7 +152,8 @@
 
   <div data-vis="custom">
     <h2>Elements</h2>
-    <div class="hint">Click an element to select it (Shift+click adds), or drag on empty stage to box-select. Drag to move, drag a handle to resize. Arrows nudge 1px (Shift = 10px), Ctrl+A selects all, Delete hides, Ctrl+Z / Ctrl+Y undo and redo. Alt while dragging turns snapping off.</div>
+    <div class="hint">Click an element to select it (Shift+click adds), or drag on empty stage to box-select. Drag to move, drag a handle to resize. Arrows nudge 1px (Shift = 10px), Ctrl+A selects all, Ctrl+D duplicates text, Delete removes it, Ctrl+Z / Ctrl+Y undo and redo. Alt while dragging turns snapping off.</div>
+    <div class="btnrow"><button class="small" id="addTxt" type="button">+ Add text box</button><button class="small" id="dupBtn" type="button">Duplicate (Ctrl+D)</button></div>
     <div class="elchips" id="elChips"></div>
     <div id="elCtl"></div>
   </div>
@@ -201,6 +202,7 @@
   <div class="hint">.ttf, .otf, .woff or .woff2, up to 8 MB. Uploaded fonts are shared by all scenes.</div>
 
   <h2>Show</h2>
+  <div data-vis="fs"><label class="check"><input type="checkbox" data-key="fsRecord"> Turn the album art into a spinning record</label></div>
   <div data-vis="nocustom">
     <label class="check"><input type="checkbox" data-key="showArt"> Album art</label>
     <label class="check"><input type="checkbox" data-key="showProgress"> Progress bar</label>
@@ -315,7 +317,7 @@ const DEFAULTS = {
   showArt: true, showProgress: true, showLabel: true, labelText: 'Now playing',
   showPaused: false, shadow: true, blur: true,
   graphicMode: 'always', graphicSeconds: 8, flashOnChange: false, explicitMode: 'show', customCss: '', elements: null,
-  transition: 'auto', transitionOut: 'same', transitionSpeed: 'normal',
+  transition: 'auto', transitionOut: 'same', transitionSpeed: 'normal', fsRecord: false,
 };
 const EL_NAMES = { art: 'Album art', title: 'Track title', artist: 'Artist name', label: 'Top label', bar: 'Progress bar', panel: 'Card background' };
 const EL_IDS = Object.keys(EL_NAMES);
@@ -328,7 +330,10 @@ const ELEMENT_DEFAULTS = {
   artist: { x: 8.6, y: 89.5, w: 16, h: 2.4, z: 2, visible: true, fontSize: 15, weight: 400, color: '', align: 'left' },
   bar:    { x: 8.6, y: 93,   w: 16, h: 0.4, z: 2, visible: true, radius: 4 },
 };
-const mergeEls = o => Object.fromEntries(EL_IDS.map(id => [id, { ...ELEMENT_DEFAULTS[id], ...((o && o[id]) || {}) }]));
+const TXT_DEFAULT = { x: 10, y: 10, w: 24, h: 5, z: 3, visible: true, fontSize: 32, weight: 700, color: '', align: 'left', text: 'New text' };
+const isCustom = id => /^txt[1-9]$/.test(id);
+const defOf = id => ELEMENT_DEFAULTS[id] || TXT_DEFAULT;
+const mergeEls = o => Object.fromEntries([...EL_IDS, ...Object.keys(o || {}).filter(isCustom)].map(id => [id, { ...defOf(id), ...((o && o[id]) || {}) }]));
 const clone = o => JSON.parse(JSON.stringify(o));
 const RESERVED = ['api', 'scene', 'fonts', 'login', 'logout', 'callback', 'customize', 'overlay', 'health', 'favicon', 'fonts.css', 'assets', 'static'];
 DEFAULTS.elements = mergeEls();
@@ -354,6 +359,7 @@ const VIS = {
   dim: s => s.layout === 'fullscreen',
   cardfx: s => s.layout !== 'fullscreen',
   autosec: s => s.graphicMode === 'autodismiss',
+  fs: s => s.layout === 'fullscreen',
   gbtns: s => s.graphicMode !== 'always',
 };
 
@@ -540,17 +546,20 @@ const E = id => state.elements[id];
 const mk = (tag, props) => Object.assign(document.createElement(tag), props);
 const round2 = v => Math.round(v * 100) / 100;
 const PX = { x: 100 / 1920, y: 100 / 1080 };           // one pixel of the 1920x1080 stage, in %
-const isText = id => 'fontSize' in ELEMENT_DEFAULTS[id];
+const isText = id => 'fontSize' in defOf(id);
+const allIds = () => Object.keys(state.elements);
+const nameOf = id => EL_NAMES[id] || ('Text: ' + String(E(id).text || '').slice(0, 14));
 let selSet = new Set(['title']), barKey = '', alignTo = 'sel';
-const selIds = () => EL_IDS.filter(id => selSet.has(id));
+const selIds = () => allIds().filter(id => selSet.has(id));
 const bbox = ids => { const x = Math.min(...ids.map(i => E(i).x)), y = Math.min(...ids.map(i => E(i).y)), r = Math.max(...ids.map(i => E(i).x + E(i).w)), b = Math.max(...ids.map(i => E(i).y + E(i).h)); return { x, y, w: r - x, h: b - y }; };
-EL_IDS.forEach(id => {
-  const b = mk('button', { type: 'button', textContent: EL_NAMES[id] }); b.onclick = e => selectEl(id, e.shiftKey || e.ctrlKey);
+function ensureEl(id) {
+  if (handles[id]) return;
+  const b = mk('button', { type: 'button' }); b.onclick = e => selectEl(id, e.shiftKey || e.ctrlKey);
   $('#elChips').appendChild(b); chipBtns[id] = b;
-  const h = mk('div', { className: 'eh', tabIndex: 0 }); h.dataset.id = id; h.title = EL_NAMES[id]; h.setAttribute('aria-label', EL_NAMES[id] + '. Drag to move, arrow keys nudge.');
-  ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach(c => { const g = mk('i'); g.dataset.c = c; h.appendChild(g); });
+  const h = mk('div', { className: 'eh', tabIndex: 0 }); h.dataset.id = id;
+  ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach(k => { const g = mk('i'); g.dataset.c = k; h.appendChild(g); });
   $('#elHandles').appendChild(h); handles[id] = h;
-});
+}
 function selectEl(id, add) {
   if (add) { if (selSet.has(id)) selSet.delete(id); else selSet.add(id); sel = selSet.has(id) ? id : (selIds().pop() || null); }
   else { selSet = new Set([id]); sel = id; }
@@ -559,10 +568,10 @@ function selectEl(id, add) {
 function setSel(ids) { selSet = new Set(ids); sel = ids[ids.length - 1] || null; render(); }
 function buildCtl() {
   const box = $('#elCtl'); box.textContent = ''; ctlFor = sel; if (!sel) return;
-  const d = ELEMENT_DEFAULTS[sel];
+  const d = defOf(sel);
   const row = (label, key, input, out) => { input.id = 'e_' + key; input.dataset.ek = key; const r = mk('div', { className: 'row' }), l = mk('label', { textContent: label, htmlFor: input.id }); r.append(l, input); if (out) { out.dataset.eo = key; r.appendChild(out); } box.appendChild(r); };
   const range = (label, key, min, max, step) => row(label, key, mk('input', { type: 'range', min, max, step }), mk('output'));
-  box.appendChild(mk('div', { className: 'hint', textContent: 'Editing: ' + EL_NAMES[sel] + (selSet.size > 1 ? ' (+' + (selSet.size - 1) + ' more selected, use the bar above the preview)' : '') }));
+  box.appendChild(mk('div', { className: 'hint', textContent: 'Editing: ' + nameOf(sel) + (selSet.size > 1 ? ' (+' + (selSet.size - 1) + ' more selected, use the bar above the preview)' : '') }));
   range('Left', 'x', 0, 100, .1); range('Top', 'y', 0, 100, .1); range('Width', 'w', 1, 100, .1); range('Height', 'h', .2, 100, .1);
   const vis = mk('label', { className: 'check' }); vis.append(mk('input', { type: 'checkbox' }), ' Visible'); vis.firstChild.dataset.ek = 'visible'; box.appendChild(vis);
   const sub = mk('div', { className: 'sub' });
@@ -574,17 +583,20 @@ $('#elCtl').addEventListener('input', e => {
   E(sel)[k] = t.type === 'checkbox' ? t.checked : t.type === 'range' ? Number(t.value) : t.value;
   push();
 });
-$('#elCtl').addEventListener('click', e => { if (e.target.dataset.ea === 'reset' && sel) { state.elements[sel] = { ...ELEMENT_DEFAULTS[sel] }; push(); } });
+$('#elCtl').addEventListener('click', e => { if (e.target.dataset.ea === 'reset' && sel) { state.elements[sel] = { ...defOf(sel), ...(isCustom(sel) ? { text: E(sel).text } : {}) }; push(); } });
 
 // ----- floating contextual bar -----
 const bar = $('#fbar');
-const TEXT_KEYS = ['font', 'fontSize', 'color', 'chameleon', 'bold', 'italic', 'underline', 'uppercase', 'align', 'letterSpacing', 'lineHeight', 'strokeWidth', 'strokeColor', 'pill', 'pillColor'];
-const supports = (id, k) => TEXT_KEYS.includes(k) ? isText(id) : k === 'marquee' ? (id === 'title' || id === 'artist') : k === 'radius' ? 'radius' in ELEMENT_DEFAULTS[id]
+const TEXT_KEYS = ['fx', 'fxColor', 'fxSize', 'font', 'fontSize', 'color', 'chameleon', 'bold', 'italic', 'underline', 'uppercase', 'align', 'letterSpacing', 'lineHeight', 'strokeWidth', 'strokeColor', 'pill', 'pillColor'];
+const supports = (id, k) => k === 'text' ? isCustom(id) : TEXT_KEYS.includes(k) ? isText(id) : k === 'marquee' ? (id === 'title' || id === 'artist') : k === 'radius' ? 'radius' in defOf(id)
   : (k === 'spin' || k === 'spinSeconds') ? id === 'art' : (k === 'fillColor' || k === 'trackColor') ? id === 'bar' : true;
-const FXD = { opacity: 100, borderWidth: 0, letterSpacing: 0, lineHeight: 1.25, strokeWidth: 0, shadowBlur: 20, spinSeconds: 9, borderColor: '#1db954', strokeColor: '#000000', shadowColor: '#000000', pillColor: '#1db954', fillColor: '#1db954', trackColor: '#555555', font: '' };
+const FXD = { opacity: 100, borderWidth: 0, letterSpacing: 0, lineHeight: 1.25, strokeWidth: 0, shadowBlur: 20, spinSeconds: 9, borderColor: '#1db954', strokeColor: '#000000', shadowColor: '#000000', pillColor: '#1db954', fx: 'none', fxColor: '#000000', fxSize: 50, fillColor: '#1db954', trackColor: '#555555', font: '' };
 const val = (id, k) => { const v = E(id)[k]; return (v === undefined || v === '') ? (k === 'color' ? state.textColor : FXD[k]) : v; };
 const truthy = (id, k) => k === 'marquee' ? E(id).marquee !== false : !!E(id)[k];
+const FX_OPTS = [['none', 'No effect'], ['shadow', 'Shadow'], ['lift', 'Lift'], ['hollow', 'Hollow'], ['neon', 'Neon'], ['echo', 'Echo'], ['glitch', 'Glitch']];
 const CTRL = [
+  { k: 'text', t: 'text', l: 'Text' },
+  { k: 'fx', t: 'fx', l: 'Effect' }, { k: 'fxColor', t: 'clr', l: '' }, { k: 'fxSize', t: 'num', l: 'Strength', min: 0, max: 100 },
   { k: 'font', t: 'font', l: 'Font' }, { k: 'fontSize', t: 'num', l: 'Size', min: 8, max: 300 }, { k: 'color', t: 'clr', l: 'Colour' }, { k: 'chameleon', t: 'tog', l: 'Album colour' },
   { k: 'bold', t: 'tog', l: 'B', s: 'font-weight:900' }, { k: 'italic', t: 'tog', l: 'I', s: 'font-style:italic' }, { k: 'underline', t: 'tog', l: 'U', s: 'text-decoration:underline' }, { k: 'uppercase', t: 'tog', l: 'AA' },
   { k: 'align', t: 'seg', l: 'Align', o: [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']] },
@@ -594,7 +606,7 @@ const CTRL = [
   { k: 'shadow', t: 'tog', l: 'Shadow / glow', g: 1 }, { k: 'shadowBlur', t: 'num', l: 'Blur', min: 0, max: 80 }, { k: 'shadowColor', t: 'clr', l: '' },
   { k: 'strokeWidth', t: 'num', l: 'Outline', min: 0, max: 12, g: 1 }, { k: 'strokeColor', t: 'clr', l: '' },
   { k: 'pill', t: 'tog', l: 'Pill' }, { k: 'pillColor', t: 'clr', l: '' }, { k: 'marquee', t: 'tog', l: 'Scroll' },
-  { k: 'spin', t: 'tog', l: 'Spin', g: 1 }, { k: 'spinSeconds', t: 'num', l: 'Secs/turn', min: 1, max: 60 },
+  { k: 'spin', t: 'tog', l: 'Record', g: 1 }, { k: 'spinSeconds', t: 'num', l: 'Secs/turn', min: 1, max: 60 },
   { k: 'fillColor', t: 'clr', l: 'Fill', g: 1 }, { k: 'trackColor', t: 'clr', l: 'Track' },
 ];
 function buildBar(ids) {
@@ -604,13 +616,15 @@ function buildBar(ids) {
   CTRL.filter(c => ids.some(id => supports(id, c.k))).forEach(c => {
     if (c.g) newGroup();
     let el;
-    if (c.t === 'num') el = mk('input', { type: 'number', min: c.min, max: c.max, step: c.step || 1 });
+    if (c.t === 'text') el = mk('input', { type: 'text', maxLength: 120, placeholder: 'Type your text' });
+    else if (c.t === 'fx') { el = mk('select'); FX_OPTS.forEach(([v, t]) => el.appendChild(mk('option', { value: v, textContent: t }))); }
+    else if (c.t === 'num') el = mk('input', { type: 'number', min: c.min, max: c.max, step: c.step || 1 });
     else if (c.t === 'clr') el = mk('input', { type: 'color' });
     else if (c.t === 'font') { el = mk('select'); el.appendChild(mk('option', { value: '', textContent: 'Scene font' })); [...$('#fontSel').options].forEach(o => el.appendChild(mk('option', { value: o.value, textContent: o.textContent }))); }
     else if (c.t === 'tog') { el = mk('button', { type: 'button', className: 'tg', textContent: c.l }); if (c.s) el.style.cssText = c.s; }
     else { el = mk('span', { className: 'seg' }); c.o.forEach(([v, t]) => { const b = mk('button', { type: 'button', textContent: t[0], title: 'Align ' + t.toLowerCase() }); b.dataset.v = v; el.appendChild(b); }); }
     el.dataset.bk = c.k; el.title = el.title || c.l || c.k;
-    if (c.t === 'num' || c.t === 'font' || (c.t === 'clr' && c.l)) { const w = mk('label', { className: 'f' }); if (c.t !== 'font' && c.l) w.appendChild(mk('span', { textContent: c.l })); w.appendChild(el); g.appendChild(w); }
+    if (c.t === 'num' || c.t === 'font' || c.t === 'fx' || (c.t === 'clr' && c.l)) { const w = mk('label', { className: 'f' }); if (c.t !== 'font' && c.t !== 'fx' && c.l) w.appendChild(mk('span', { textContent: c.l })); w.appendChild(el); g.appendChild(w); }
     else g.appendChild(el);
   });
   g = mk('div', { className: 'g' }); bar.appendChild(g);
@@ -618,7 +632,7 @@ function buildBar(ids) {
   [['al-l', 'Left', 'Align left edges'], ['al-c', 'Centre', 'Align horizontal centres'], ['al-r', 'Right', 'Align right edges'], ['al-t', 'Top', 'Align top edges'], ['al-m', 'Middle', 'Align vertical centres'], ['al-b', 'Bottom', 'Align bottom edges']]
     .forEach(([a, t, ti]) => { const b = mk('button', { type: 'button', textContent: t, title: ti }); b.dataset.ba = a; g.appendChild(b); });
   g = mk('div', { className: 'g' }); bar.appendChild(g);
-  [['cx', 'Centre H'], ['cy', 'Centre V'], ['front', 'Forward'], ['back', 'Backward'], ['lock', 'Lock'], ['hide', 'Hide']].forEach(([a, t]) => { const b = mk('button', { type: 'button', textContent: t, className: a === 'hide' ? 'danger' : '' }); b.dataset.ba = a; g.appendChild(b); });
+  [['dup', 'Duplicate'], ['cx', 'Centre H'], ['cy', 'Centre V'], ['front', 'Forward'], ['back', 'Backward'], ['lock', 'Lock'], ['del', 'Delete']].forEach(([a, t]) => { const b = mk('button', { type: 'button', textContent: t, className: a === 'del' ? 'danger' : '' }); b.dataset.ba = a; g.appendChild(b); });
 }
 function syncBar(ids) {
   bar.querySelectorAll('[data-bk]').forEach(el => {
@@ -641,7 +655,8 @@ function placeBar() {
   bar.style.left = Math.min(Math.max(4, left), Math.max(4, cw - bw - 4)) + 'px'; bar.style.top = top + 'px';
 }
 new ResizeObserver(() => placeBar()).observe(wrap);
-function applyKey(k, v) { let n = 0; selIds().forEach(id => { if (supports(id, k)) { E(id)[k] = v; n++; } }); if (n) push(); }
+function applyKey(k, v) { let n = 0; if (k === 'spin' && v && selSet.has('art')) E('art').h = round2(Math.min(E('art').w * 1920 / 1080, 100 - E('art').y));   // round, not oval
+  selIds().forEach(id => { if (supports(id, k)) { E(id)[k] = v; n++; } }); if (n) push(); }
 bar.addEventListener('input', e => {
   const t = e.target; if (t.dataset.al) { alignTo = t.value; return; }
   const k = t.dataset.bk; if (!k) return;
@@ -668,16 +683,36 @@ function action(a) {
   if (a === 'front') ids.forEach(id => E(id).z = Math.min(20, E(id).z + 1));
   else if (a === 'back') ids.forEach(id => E(id).z = Math.max(1, E(id).z - 1));
   else if (a === 'lock') { const nv = !ids.every(id => E(id).locked); ids.forEach(id => E(id).locked = nv); }
-  else if (a === 'hide') { ids.forEach(id => E(id).visible = false); setSel([]); }
+  else if (a === 'del') { ids.forEach(id => { if (isCustom(id)) delete state.elements[id]; else E(id).visible = false; }); setSel([]); }
+  else if (a === 'dup') {
+    const made = [];
+    ids.filter(isText).forEach(id => {
+      const n = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => 'txt' + i).find(k => !state.elements[k]); if (!n) return;
+      const src = E(id), base = { ...defOf(id), ...src };
+      state.elements[n] = { ...base, locked: false, x: Math.min(100 - base.w, base.x + 2), y: Math.min(100 - base.h, base.y + 3), z: Math.min(20, base.z + 1), text: isCustom(id) ? src.text : (id === 'label' ? state.labelText : id === 'title' ? 'Track title' : 'Artist name') };
+      made.push(n);
+    });
+    if (!made.length) return say('Only text can be duplicated. Use Add text box for new text.', 'err');
+    state.elements = { ...state.elements }; setSel(made);
+  }
   else if (a === 'cx' || a === 'cy') { if (mv.length) { const bb = bbox(mv); if (a === 'cx') { const d = (100 - bb.w) / 2 - bb.x; mv.forEach(id => E(id).x = round2(E(id).x + d)); } else { const d = (100 - bb.h) / 2 - bb.y; mv.forEach(id => E(id).y = round2(E(id).y + d)); } } }
   else if (a.startsWith('al-')) alignIds(a.slice(3), mv);
   push();
 }
+function addText() {
+  const n = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => 'txt' + i).find(k => !state.elements[k]);
+  if (!n) return say('Up to 9 extra text boxes per scene.', 'err');
+  state.elements[n] = { ...TXT_DEFAULT, x: 38, y: 45, z: Math.min(20, Math.max(...allIds().map(i => E(i).z)) + 1) }; state.layout = 'custom'; setSel([n]); push();
+}
+$('#addTxt').onclick = addText; $('#dupBtn').onclick = () => { if (selIds().length) action('dup'); };
 function renderEls() {
   const on = state.layout === 'custom';
+  allIds().forEach(ensureEl);
+  Object.keys(handles).forEach(id => { if (!state.elements[id]) { handles[id].remove(); chipBtns[id].remove(); delete handles[id]; delete chipBtns[id]; selSet.delete(id); if (sel === id) sel = selIds().pop() || null; } });
   $('#hit').style.display = on ? 'block' : 'none';
-  EL_IDS.forEach(id => {
+  allIds().forEach(id => {
     const t = E(id), h = handles[id];
+    h.title = nameOf(id); h.setAttribute('aria-label', nameOf(id)); chipBtns[id].textContent = nameOf(id);
     chipBtns[id].classList.toggle('on', selSet.has(id)); chipBtns[id].classList.toggle('off', !t.visible);
     h.classList.toggle('off', !on || !t.visible); h.classList.toggle('sel', selSet.has(id)); h.classList.toggle('one', selSet.size === 1); h.classList.toggle('lk', !!t.locked);
     Object.assign(h.style, { left: t.x + '%', top: t.y + '%', width: t.w + '%', height: t.h + '%', zIndex: 3 + t.z });
@@ -709,7 +744,7 @@ hit.addEventListener('pointermove', e => {
   mq.moved = true;
   const L = Math.min(mq.x0, x1), T = Math.min(mq.y0, y1), W = Math.abs(x1 - mq.x0), H = Math.abs(y1 - mq.y0), cw = wrap.clientWidth, ch = wrap.clientHeight;
   Object.assign(mqBox.style, { display: 'block', left: L + 'px', top: T + 'px', width: W + 'px', height: H + 'px' });
-  const ids = EL_IDS.filter(id => { const t = E(id); return t.visible && t.x / 100 * cw < L + W && (t.x + t.w) / 100 * cw > L && t.y / 100 * ch < T + H && (t.y + t.h) / 100 * ch > T; });
+  const ids = allIds().filter(id => { const t = E(id); return t.visible && t.x / 100 * cw < L + W && (t.x + t.w) / 100 * cw > L && t.y / 100 * ch < T + H && (t.y + t.h) / 100 * ch > T; });
   setSel([...new Set([...mq.base, ...ids])]);
 });
 const endMq = () => { mq = null; mqBox.style.display = 'none'; };
@@ -769,11 +804,12 @@ addEventListener('keydown', e => {
   if (mod && key === 'z') { e.preventDefault(); histGo(e.shiftKey ? 1 : -1); return; }
   if (mod && key === 'y') { e.preventDefault(); histGo(1); return; }
   if (state.layout !== 'custom' || t.type === 'range') return;
-  if (mod && key === 'a') { e.preventDefault(); setSel(EL_IDS.filter(id => E(id).visible)); return; }
+  if (mod && key === 'a') { e.preventDefault(); setSel(allIds().filter(id => E(id).visible)); return; }
+  if (mod && key === 'd') { e.preventDefault(); if (selIds().length) action('dup'); return; }
   if (key === 'escape') { setSel([]); return; }
   const ids = selIds();
   if (!ids.length) return;
-  if (key === 'delete' || key === 'backspace') { e.preventDefault(); action('hide'); return; }
+  if (key === 'delete' || key === 'backspace') { e.preventDefault(); action('del'); return; }
   const st = e.shiftKey ? 10 : 1, d = { arrowleft: [-st, 0], arrowright: [st, 0], arrowup: [0, -st], arrowdown: [0, st] }[key];
   if (!d) return;
   e.preventDefault();

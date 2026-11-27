@@ -51,10 +51,14 @@ const ELEMENT_DEFAULTS = {
   artist: { x: 8.6, y: 89.5, w: 16, h: 2.4, z: 2, visible: true, fontSize: 15, weight: 400, color: '', align: 'left' },
   bar:    { x: 8.6, y: 93,   w: 16, h: 0.4, z: 2, visible: true, radius: 4 },
 };
-const NUMX = new Set(['opacity', 'borderWidth', 'letterSpacing', 'lineHeight', 'strokeWidth', 'shadowBlur', 'padX', 'spinSeconds']);
+const FX = ['none', 'shadow', 'lift', 'hollow', 'neon', 'echo', 'glitch'];
+const TXT_DEFAULT = { x: 10, y: 10, w: 24, h: 5, z: 3, visible: true, fontSize: 32, weight: 700, color: '', align: 'left', text: 'New text' };
+const NUMX = new Set(['fxSize', 'opacity', 'borderWidth', 'letterSpacing', 'lineHeight', 'strokeWidth', 'shadowBlur', 'padX', 'spinSeconds']);
 function sanitizeEls(inp, base) {
   const out = {};
-  for (const [id, d] of Object.entries(ELEMENT_DEFAULTS)) {
+  const src = inp && typeof inp === 'object' ? inp : base || {};          // user-added text boxes (txt1..txt9)
+  const extra = Object.keys(src).filter(k => /^txt[1-9]$/.test(k)).map(k => [k, TXT_DEFAULT]);
+  for (const [id, d] of [...Object.entries(ELEMENT_DEFAULTS), ...extra]) {
     const b = { ...d, ...((base && base[id]) || {}) }, i = (inp && typeof inp === 'object' && inp[id]) || {};
     const n = (k, min, max) => { const v = Number(i[k]); if (i[k] !== undefined && i[k] !== null && i[k] !== '' && Number.isFinite(v) && (k in d || NUMX.has(k))) b[k] = Math.min(max, Math.max(min, Math.round(v * 100) / 100)); };
     n('x', 0, 100); n('y', 0, 100); n('w', 1, 100); n('h', 0.2, 100); n('z', 1, 20);
@@ -63,6 +67,9 @@ function sanitizeEls(inp, base) {
     for (const k of ['visible', 'locked', 'bold', 'italic', 'underline', 'uppercase', 'chameleon', 'shadow', 'pill', 'spin', 'marquee']) if (typeof i[k] === 'boolean') b[k] = i[k];
     for (const k of ['borderColor', 'strokeColor', 'shadowColor', 'pillColor', 'fillColor', 'trackColor']) if (typeof i[k] === 'string' && (i[k] === '' || /^#[0-9a-f]{6}$/i.test(i[k]))) b[k] = i[k].toLowerCase();
     if (typeof i.font === 'string' && (i.font === '' || FONTS.includes(i.font) || /^custom:[\w .-]{1,60}$/.test(i.font))) b.font = i.font;
+    if (FX.includes(i.fx)) b.fx = i.fx;
+    if (typeof i.fxColor === 'string' && (i.fxColor === '' || /^#[0-9a-f]{6}$/i.test(i.fxColor))) b.fxColor = i.fxColor.toLowerCase();
+    if ('text' in d && typeof i.text === 'string') b.text = i.text.slice(0, 120);
     if (['solid', 'dashed', 'dotted'].includes(i.borderStyle)) b.borderStyle = i.borderStyle;
     n('spinSeconds', 1, 60);
     if ('weight' in d && [400, 500, 600, 700, 800, 900].includes(Number(i.weight))) b.weight = Number(i.weight);
@@ -83,7 +90,7 @@ const DEFAULTS = {
   showPaused: false, shadow: true, blur: true,
   graphicMode: 'always', graphicSeconds: 8,
   flashOnChange: false, explicitMode: 'show', customCss: '',
-  transition: 'auto', transitionOut: 'same', transitionSpeed: 'normal',
+  transition: 'auto', transitionOut: 'same', transitionSpeed: 'normal', fsRecord: false,
   elements: ELEMENT_DEFAULTS,
 };
 function sanitize(inp, base = DEFAULTS) {
@@ -105,7 +112,7 @@ function sanitize(inp, base = DEFAULTS) {
   num('artSize', 40, 400); num('graphicSeconds', 2, 120); num('posX', 0, 100, 1); num('posY', 0, 100, 1);
   hex('bgColor'); hex('textColor'); hex('accent');
   o.elements = sanitizeEls(inp.elements, base.elements);
-  ['chameleon', 'showArt', 'showProgress', 'showLabel', 'showPaused', 'shadow', 'blur', 'flashOnChange', 'titleSafe'].forEach(bool);
+  ['chameleon', 'showArt', 'showProgress', 'showLabel', 'showPaused', 'shadow', 'blur', 'flashOnChange', 'titleSafe', 'fsRecord'].forEach(bool);
   return o;
 }
 

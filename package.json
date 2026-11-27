@@ -1,6 +1,6 @@
 {
   "name": "spotify-now-playing",
-  "version": "2.3.0",
+  "version": "2.5.0",
   "description": "Self-hosted Spotify now-playing overlay for OBS, with a live customize page. Zero dependencies.",
   "main": "server.js",
   "scripts": { "start": "node server.js" },
